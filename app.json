@@ -1,5 +1,6 @@
 {
   "expo": {
+    "scheme": "bs_app",
     "name": "bs",
     "slug": "bs",
     "version": "1.0.0",
