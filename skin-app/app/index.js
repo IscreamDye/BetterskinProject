@@ -1,34 +1,101 @@
-
+import React, { useState } from "react";
 import { router } from "expo-router";
-import { StyleSheet, View, Text, TextInput, Button, ImageBackground} from "react-native";
+import {
+  StyleSheet,
+  View,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  ImageBackground,
+  Alert,
+  ActivityIndicator,
+} from "react-native";
 import { BlurView } from "expo-blur";
-import loginbg from '../assets/images/bg/img1.jpg'
-
+import loginbg from "../assets/images/bg/img1.jpg";
+import { supabase } from "../lib/supabase";
 
 export default function LoginScreen() {
-  return (
-     <ImageBackground source={loginbg} style={styles.background}>
-      <View style={styles.wrapper}>
-        <BlurView intensity={100}  style={styles.container} >
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
 
+  const signIn = async () => {
+    if (!email || !password) {
+      Alert.alert("Missing fields", "Please enter email and password");
+      return;
+    }
+
+    setLoading(true);
+
+    const { error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
+
+    setLoading(false);
+
+    if (error) {
+      Alert.alert("Login failed", error.message);
+    } else {
+      router.replace("/profile");
+    }
+  };
+
+  return (
+    <ImageBackground source={loginbg} style={styles.background}>
+      <View style={styles.wrapper}>
+        <BlurView intensity={100} style={styles.container}>
           <View style={styles.headerRow}>
             <Text style={styles.title}>Log in</Text>
-            <Text style={styles.title_mid} onPress={() => router.push("/signup")}>Sign up</Text>
+            <Text
+              style={styles.title_mid}
+              onPress={() => router.push("/signup")}
+            >
+              Sign up
+            </Text>
           </View>
 
-          <TextInput style={styles.input} placeholder="Username" />
-          <TextInput style={styles.input} placeholder="Password" secureTextEntry />
+          <TextInput
+            style={styles.input}
+            placeholder="Email"
+            placeholderTextColor="#555"
+            autoCapitalize="none"
+            keyboardType="email-address"
+            value={email}
+            onChangeText={setEmail}
+          />
+
+          <TextInput
+            style={styles.input}
+            placeholder="Password"
+            placeholderTextColor="#555"
+            secureTextEntry
+            value={password}
+            onChangeText={setPassword}
+          />
 
           <View style={styles.headerRow}>
-            <Text style={styles.title_s} onPress={() => router.push("/quiz")}>Forgot password</Text>
-            <Text style={styles.title_s} onPress={() => router.push("/quiz")}>Next</Text>
-          </View>
+            <Text
+              style={styles.title_s}
+              onPress={() => Alert.alert("Coming soon")}
+            >
+              Forgot password
+            </Text>
 
+            <TouchableOpacity onPress={signIn} disabled={loading}>
+              {loading ? (
+                <ActivityIndicator />
+              ) : (
+                <Text style={styles.title_s}>SignIn</Text>
+              )}
+            </TouchableOpacity>
+          </View>
         </BlurView>
       </View>
     </ImageBackground>
   );
 }
+
 
 
 const styles = StyleSheet.create({

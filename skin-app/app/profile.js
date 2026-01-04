@@ -44,7 +44,7 @@ export default function DashboardScreen() {
         {/* Bottom navigation */}
         <BlurView intensity={80} style={styles.bottomBar}>
           <NavButton label="Home" onPress={() => router.push("/")} />
-          
+           
           <NavButton label="My Products" onPress={() => router.push("/myproducts")} />
           <NavButton label="Profile" onPress={() => router.push("/routine")} />
         </BlurView>
