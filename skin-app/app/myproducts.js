@@ -9,10 +9,14 @@ import {
   Alert,
 } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useSafeAreaInsets, SafeAreaView } from "react-native-safe-area-context";
 import { router } from "expo-router";
+import BottomNav from "./BottomNav"; // make sure path is correct
 
 export default function MyProducts() {
+  
   const [products, setProducts] = useState([]);
+  const insets = useSafeAreaInsets(); // top/bottom safe area
 
   useEffect(() => {
     loadProducts();
@@ -20,9 +24,7 @@ export default function MyProducts() {
 
   const loadProducts = async () => {
     const stored = await AsyncStorage.getItem("products");
-    if (stored) {
-      setProducts(JSON.parse(stored));
-    }
+    if (stored) setProducts(JSON.parse(stored));
   };
 
   const deleteProduct = async (id) => {
@@ -45,12 +47,15 @@ export default function MyProducts() {
   };
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container}>
       <FlatList
         data={products}
         numColumns={2}
         keyExtractor={(item) => item.id}
-        contentContainerStyle={styles.grid}
+        contentContainerStyle={[
+          styles.grid,
+          { paddingBottom: insets.bottom + 100, paddingTop: insets.top + 10 },
+        ]}
         renderItem={({ item }) => (
           <TouchableOpacity
             style={styles.card}
@@ -69,25 +74,29 @@ export default function MyProducts() {
 
       {/* Floating Add Button */}
       <TouchableOpacity
-        style={styles.addButton}
-        onPress={() => router.push("/products/camera")}
-      >
-        <Text style={styles.addText}>＋</Text>
-      </TouchableOpacity>
-    </View>
+      style={[
+        styles.addButton,
+        { bottom: insets.bottom + 100 }, // above BottomNav + safe area
+      ]}
+      onPress={() => router.push("/products/camera")}
+    >
+      <Text style={styles.addText}>＋</Text>
+    </TouchableOpacity>
+
+      {/* Shared Bottom Navigation */}
+      <BottomNav />
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#f2f2f2",
+    backgroundColor: "#f90f90f2",
   },
-
   grid: {
     padding: 15,
   },
-
   card: {
     width: "48%",
     backgroundColor: "#fff",
@@ -96,44 +105,42 @@ const styles = StyleSheet.create({
     marginBottom: 15,
     marginRight: "4%",
   },
-
   image: {
     height: 120,
     borderRadius: 12,
     marginBottom: 8,
     backgroundColor: "#ddd",
   },
-
   name: {
     fontSize: 14,
     fontWeight: "600",
     color: "#333",
   },
-
   category: {
     fontSize: 12,
     color: "#777",
   },
-
   empty: {
     textAlign: "center",
     marginTop: 80,
     fontSize: 16,
     color: "#777",
   },
-
   addButton: {
-    position: "absolute",
-    bottom: 25,
-    right: 25,
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: "#333",
-    justifyContent: "center",
-    alignItems: "center",
-    elevation: 5,
-  },
+  position: "absolute",
+  right: 50,
+  width: 60,
+  height: 60,
+  borderRadius: 30,
+  backgroundColor: "#333",
+  justifyContent: "center",
+  alignItems: "center",
+  elevation: 5,
+  shadowColor: "#000",
+  shadowOffset: { width: 0, height: 2 },
+  shadowOpacity: 0.25,
+  shadowRadius: 3.84,
+},
 
   addText: {
     color: "white",

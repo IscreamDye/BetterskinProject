@@ -9,10 +9,15 @@ import {
   ImageBackground,
   Alert,
   ActivityIndicator,
+  KeyboardAvoidingView, Platform, ScrollView, TouchableWithoutFeedback, Keyboard
 } from "react-native";
+
+
 import { BlurView } from "expo-blur";
 import loginbg from "../assets/images/bg/img2.jpg";
 import { supabase } from "../lib/supabase";
+
+
 
 export default function SignupScreen() {
   const [firstName, setFirstName] = useState("");
@@ -59,75 +64,89 @@ export default function SignupScreen() {
     }
   };
 
-  return (
-    <ImageBackground source={loginbg} style={styles.background}>
-      <View style={styles.wrapper}>
-        <BlurView intensity={100} style={styles.container}>
-          <View style={styles.headerRow}>
-            <TouchableOpacity onPress={() => router.back()}>
-              <Text style={styles.title_s}>Back</Text>
-            </TouchableOpacity>
-          </View>
+ return (
+  <ImageBackground source={loginbg} style={styles.background}>
+    <KeyboardAvoidingView
+      style={{ flex: 1 }}
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
+      keyboardVerticalOffset={Platform.OS === "ios" ? 80 : 0}
+    >
+      <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+        <View style={styles.wrapper}>
+          <BlurView intensity={100} style={styles.container}>
+            <ScrollView
+              showsVerticalScrollIndicator={false}
+              keyboardShouldPersistTaps="handled"
+            >
+              <View style={styles.headerRow}>
+                <TouchableOpacity onPress={() => router.back()}>
+                  <Text style={styles.title_s}>Back</Text>
+                </TouchableOpacity>
+              </View>
 
-          <TextInput
-            style={styles.input}
-            placeholder="First name"
-            placeholderTextColor="#555"
-            value={firstName}
-            onChangeText={setFirstName}
-          />
+              <TextInput
+                style={styles.input}
+                placeholder="First name"
+                placeholderTextColor="#555"
+                value={firstName}
+                onChangeText={setFirstName}
+              />
 
-          <TextInput
-            style={styles.input}
-            placeholder="Last name"
-            placeholderTextColor="#555"
-            value={lastName}
-            onChangeText={setLastName}
-          />
+              <TextInput
+                style={styles.input}
+                placeholder="Last name"
+                placeholderTextColor="#555"
+                value={lastName}
+                onChangeText={setLastName}
+              />
 
-          <TextInput
-            style={styles.input}
-            placeholder="Email"
-            placeholderTextColor="#555"
-            autoCapitalize="none"
-            keyboardType="email-address"
-            value={email}
-            onChangeText={setEmail}
-          />
+              <TextInput
+                style={styles.input}
+                placeholder="Email"
+                placeholderTextColor="#555"
+                autoCapitalize="none"
+                keyboardType="email-address"
+                value={email}
+                onChangeText={setEmail}
+              />
 
-          <TextInput
-            style={styles.input}
-            placeholder="Password"
-            placeholderTextColor="#555"
-            secureTextEntry
-            value={password}
-            onChangeText={setPassword}
-          />
+              <TextInput
+                style={styles.input}
+                placeholder="Password"
+                placeholderTextColor="#555"
+                secureTextEntry
+                value={password}
+                onChangeText={setPassword}
+              />
 
-          <TextInput
-            style={styles.input}
-            placeholder="Re-enter password"
-            placeholderTextColor="#555"
-            secureTextEntry
-            value={confirmPassword}
-            onChangeText={setConfirmPassword}
-          />
+              <TextInput
+                style={styles.input}
+                placeholder="Re-enter password"
+                placeholderTextColor="#555"
+                secureTextEntry
+                value={confirmPassword}
+                onChangeText={setConfirmPassword}
+              />
 
-          <TouchableOpacity
-            style={styles.nextButton}
-            onPress={signUp}
-            disabled={loading}
-          >
-            {loading ? (
-              <ActivityIndicator color="#000" />
-            ) : (
-              <Text style={styles.nextButtonText}>Create account</Text>
-            )}
-          </TouchableOpacity>
-        </BlurView>
-      </View>
-    </ImageBackground>
-  );
+              <TouchableOpacity
+                style={styles.nextButton}
+                onPress={signUp}
+                disabled={loading}
+              >
+                {loading ? (
+                  <ActivityIndicator color="#000" />
+                ) : (
+                  <Text style={styles.nextButtonText}>Create account</Text>
+                )}
+              </TouchableOpacity>
+            </ScrollView>
+          </BlurView>
+        </View>
+      </TouchableWithoutFeedback>
+    </KeyboardAvoidingView>
+  </ImageBackground>
+);
+
 }
 
 const styles = StyleSheet.create({

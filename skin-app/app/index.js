@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { router } from "expo-router";
 import {
-  StyleSheet,
+   StyleSheet,
   View,
   Text,
   TextInput,
@@ -9,6 +9,11 @@ import {
   ImageBackground,
   Alert,
   ActivityIndicator,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  TouchableWithoutFeedback,
+  Keyboard,
 } from "react-native";
 import { BlurView } from "expo-blur";
 import loginbg from "../assets/images/bg/img1.jpg";
@@ -41,59 +46,77 @@ export default function LoginScreen() {
     }
   };
 
-  return (
-    <ImageBackground source={loginbg} style={styles.background}>
-      <View style={styles.wrapper}>
-        <BlurView intensity={100} style={styles.container}>
-          <View style={styles.headerRow}>
-            <Text style={styles.title}>Log in</Text>
-            <Text
-              style={styles.title_mid}
-              onPress={() => router.push("/signup")}
+return (
+  <ImageBackground source={loginbg} style={styles.background}>
+    <KeyboardAvoidingView
+      style={{ flex: 1 }}
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
+      keyboardVerticalOffset={Platform.OS === "ios" ? 80 : 0}
+    >
+      {/* Tapping anywhere outside inputs dismisses keyboard */}
+      <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
+        <View style={styles.wrapper}>
+          <BlurView intensity={50} style={styles.container}>
+            <ScrollView
+              showsVerticalScrollIndicator={false}
+              keyboardShouldPersistTaps="handled" // important for buttons/inputs
             >
-              Sign up
-            </Text>
-          </View>
+              <View style={styles.headerRow}>
+                <Text style={styles.title}>Log in</Text>
+                <Text
+                  style={styles.title_mid}
+                  onPress={() => router.push("/signup")}
+                >
+                  Sign up
+                </Text>
+              </View>
 
-          <TextInput
-            style={styles.input}
-            placeholder="Email"
-            placeholderTextColor="#555"
-            autoCapitalize="none"
-            keyboardType="email-address"
-            value={email}
-            onChangeText={setEmail}
-          />
+              <TextInput
+                style={styles.input}
+                placeholder="Email"
+                placeholderTextColor="#555"
+                autoCapitalize="none"
+                keyboardType="email-address"
+                value={email}
+                onChangeText={setEmail}
+                returnKeyType="next"
+              />
 
-          <TextInput
-            style={styles.input}
-            placeholder="Password"
-            placeholderTextColor="#555"
-            secureTextEntry
-            value={password}
-            onChangeText={setPassword}
-          />
+              <TextInput
+                style={styles.input}
+                placeholder="Password"
+                placeholderTextColor="#555"
+                secureTextEntry
+                value={password}
+                onChangeText={setPassword}
+                returnKeyType="done"
+              />
 
-          <View style={styles.headerRow}>
-            <Text
-              style={styles.title_s}
-              onPress={() => Alert.alert("Coming soon")}
-            >
-              Forgot password
-            </Text>
+              <View style={styles.headerRow}>
+                <Text
+                  style={styles.title_s}
+                  onPress={() => Alert.alert("Coming soon")}
+                >
+                  Forgot password
+                </Text>
 
-            <TouchableOpacity onPress={signIn} disabled={loading}>
-              {loading ? (
-                <ActivityIndicator />
-              ) : (
-                <Text style={styles.title_s}>SignIn</Text>
-              )}
-            </TouchableOpacity>
-          </View>
-        </BlurView>
-      </View>
-    </ImageBackground>
-  );
+                <TouchableOpacity onPress={signIn} disabled={loading}>
+                  {loading ? (
+                    <ActivityIndicator />
+                  ) : (
+                    <Text style={styles.title_s}>Sign In</Text>
+                  )}
+                </TouchableOpacity>
+              </View>
+            </ScrollView>
+          </BlurView>
+        </View>
+      </TouchableWithoutFeedback>
+    </KeyboardAvoidingView>
+  </ImageBackground>
+);
+
+
 }
 
 
@@ -139,7 +162,7 @@ const styles = StyleSheet.create({
     padding: 10,
     marginBottom: 20,
     borderRadius: 20,
-    color: "#fff",
+    color: "#555",
   },
   headerRow: {
   flexDirection: "row",       

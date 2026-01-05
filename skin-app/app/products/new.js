@@ -13,8 +13,10 @@ import { router, useLocalSearchParams } from "expo-router";
 const categories = [
   "Cleanser",
   "Toner",
-  "Serum",
+  "Serum / Active Ingredients",
   "Moisturizer",
+  "Eye cream",
+  "Exfoliant",
   "Sunscreen",
 ];
 
@@ -22,6 +24,7 @@ export default function NewProduct() {
   const { uri } = useLocalSearchParams();
 
   const [name, setName] = useState("");
+  const [brand, setBrand] = useState("");
   const [ingredients, setIngredients] = useState("");
   const [category, setCategory] = useState("Cleanser");
 
@@ -32,6 +35,7 @@ export default function NewProduct() {
     const newProduct = {
       id: Date.now().toString(),
       name,
+      brand,
       ingredients,
       category,
       imageUri: uri,
@@ -54,6 +58,13 @@ export default function NewProduct() {
         style={styles.input}
         value={name}
         onChangeText={setName}
+      />
+
+      <TextInput
+        placeholder="Brand"
+        style={styles.input}
+        value={brand}
+        onChangeText={setBrand}
       />
 
       <TextInput
@@ -85,7 +96,6 @@ export default function NewProduct() {
     </View>
   );
 }
-
 
 const styles = StyleSheet.create({
   container: {
@@ -148,4 +158,3 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
 });
-

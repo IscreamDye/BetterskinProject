@@ -7,14 +7,17 @@ import {
   StyleSheet,
 } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import BottomNav from "./BottomNav"; // adjust path
 
 const morningOrder = ["Cleanser", "Toner", "Serum", "Moisturizer", "Sunscreen"];
 const eveningOrder = ["Cleanser", "Toner", "Serum", "Moisturizer"];
 
 export default function RoutineScreen() {
-  const [routineType, setRoutineType] = useState("morning"); // default
+  const [routineType, setRoutineType] = useState("morning");
   const [products, setProducts] = useState([]);
   const [displayedProducts, setDisplayedProducts] = useState([]);
+  const insets = useSafeAreaInsets(); // <-- use safe area
 
   useEffect(() => {
     loadProducts();
@@ -32,7 +35,6 @@ export default function RoutineScreen() {
   const filterRoutine = () => {
     const order = routineType === "morning" ? morningOrder : eveningOrder;
 
-    // Filter and sort products according to routine order
     const filtered = [];
     order.forEach((cat) => {
       products
@@ -44,14 +46,13 @@ export default function RoutineScreen() {
   };
 
   const markUsed = (id) => {
-    // Remove product from displayed list
     setDisplayedProducts(displayedProducts.filter((p) => p.id !== id));
   };
 
   return (
     <View style={styles.container}>
       {/* Routine type buttons */}
-      <View style={styles.buttonsRow}>
+      <View style={[styles.buttonsRow, { marginTop: insets.top + 10 }]}>
         <TouchableOpacity
           style={[
             styles.routineButton,
@@ -77,16 +78,21 @@ export default function RoutineScreen() {
       <FlatList
         data={displayedProducts}
         keyExtractor={(item) => item.id}
-        contentContainerStyle={{ padding: 15 }}
+        contentContainerStyle={{
+          padding: 15,
+          paddingBottom: insets.bottom + 80, // space for BottomNav
+        }}
         renderItem={({ item }) => (
           <View style={styles.productCard}>
-            <Text style={styles.productName}>{item.name}</Text>
-            <Text style={styles.productCategory}>{item.category}</Text>
+            <View>
+              <Text style={styles.productName}>{item.name}</Text>
+              <Text style={styles.productCategory}>{item.category}</Text>
+            </View>
             <TouchableOpacity
               style={styles.usedButton}
               onPress={() => markUsed(item.id)}
             >
-              <Text style={styles.usedText}>Used</Text>
+              <Text style={styles.usedText}>X</Text>
             </TouchableOpacity>
           </View>
         )}
@@ -96,6 +102,9 @@ export default function RoutineScreen() {
           </Text>
         }
       />
+
+      {/* Shared Bottom Navigation */}
+      <BottomNav />
     </View>
   );
 }
@@ -106,7 +115,6 @@ const styles = StyleSheet.create({
   buttonsRow: {
     flexDirection: "row",
     justifyContent: "center",
-    marginTop: 20,
     marginBottom: 10,
   },
 
