@@ -7,21 +7,19 @@ import {
   ScrollView,
   TouchableOpacity,
   Alert,
+  ActivityIndicator,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { router } from "expo-router"; // Expo Router
+import { useEffect, useState } from "react";
+import * as Location from "expo-location";
+import { router } from "expo-router";
 import loginbg from "../assets/images/bg/img3.jpg";
-import { supabase } from "../lib/supabase"; // if using Supabase auth
-
-const sponsoredProducts = [
-  { id: 1, name: "Cleanser X", rating: 4.5 },
-  { id: 2, name: "Serum Pro", rating: 4.2 },
-  { id: 3, name: "Moisture Plus", rating: 4.8 },
-  { id: 4, name: "Glow Cream", rating: 4.1 },
-];
+import { supabase } from "../lib/supabase";
 
 export default function DashboardScreen() {
-  const insets = useSafeAreaInsets(); // safe area for top/bottom
+  const insets = useSafeAreaInsets();
+  const [uvData, setUvData] = useState(null);
+  const [loading, setLoading] = useState(true);
 
   const handleLogout = async () => {
     try {
@@ -33,39 +31,93 @@ export default function DashboardScreen() {
     }
   };
 
+  // Get user's current location
+  const getUserLocation = async () => {
+    const { status } = await Location.requestForegroundPermissionsAsync();
+    if (status !== "granted") {
+      Alert.alert("Permission denied", "Cannot access location.");
+      return null;
+    }
+    const location = await Location.getCurrentPositionAsync({});
+    return location.coords; // { latitude, longitude }
+  };
+
+  // Fetch UV data from OpenUV
+  const fetchUVData = async () => {
+    setLoading(true);
+    try {
+      const coords = await getUserLocation();
+      if (!coords) {
+        setLoading(false);
+        return;
+      }
+
+      const response = await fetch(
+        `https://api.openuv.io/api/v1/uv?lat=${coords.latitude}&lng=${coords.longitude}`,
+        {
+          headers: {
+            "x-access-token": "openuv-2x9krmk2fbn3r-io", // replace with your API key
+          },
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      setUvData(data.result);
+    } catch (error) {
+      Alert.alert("Failed to fetch UV data", error.message);
+      console.error("UV fetch error:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchUVData();
+  }, []);
+
   return (
     <ImageBackground source={loginbg} style={styles.background}>
       <View style={styles.overlay}>
         {/* Header with Logout */}
         <View style={[styles.headerRow, { paddingTop: insets.top + 10 }]}>
-          <Text style={styles.headerTitle}>Dashboard</Text>
+          <Text style={styles.headerTitle}>BETTERSKIN</Text>
           <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
             <Text style={styles.logoutText}>Logout</Text>
           </TouchableOpacity>
         </View>
 
-        {/* Sponsored products */}
+        {/* Scrollable content */}
         <ScrollView
           contentContainerStyle={[
-            styles.productsGrid,
-            { paddingBottom: insets.bottom + 100 }, // space for BottomNav
+            styles.contentContainer,
+            { paddingBottom: insets.bottom + 100 },
           ]}
         >
-          {sponsoredProducts.map((item) => (
-            <View key={item.id} style={styles.productCard}>
-              <View style={styles.productImage}>
-                <Text style={styles.imageText}>Image</Text>
-              </View>
-              <Text style={styles.productName}>{item.name}</Text>
-              <View style={styles.ratingRow}>
-                <Text style={styles.rating}>⭐ {item.rating}</Text>
-                <Text style={styles.icon}>♡</Text>
-              </View>
+          {loading ? (
+            <ActivityIndicator size="large" color="#000" />
+          ) : uvData ? (
+            <View style={styles.uvCard}>
+              <Text style={styles.sectionTitle}>UV Index</Text>
+              <Text style={styles.uvText}>Current UV: {uvData.uv.toFixed(2)}</Text>
+              <Text style={styles.uvText}>Max UV Today: {uvData.uv_max.toFixed(2)}</Text>
+              {uvData.safe_exposure_time?.st1 && (
+                <Text style={styles.uvText}>
+                  Safe Exposure (Skin Type 1): {uvData.safe_exposure_time.st1} mins
+                </Text>
+              )}
             </View>
-          ))}
+          ) : (
+            <Text style={styles.errorText}>Unable to fetch UV data</Text>
+
+          )}
+
         </ScrollView>
 
-        {/* Shared Bottom Navigation */}
+        {/* Bottom Navigation */}
         <BottomNav />
       </View>
     </ImageBackground>
@@ -88,6 +140,7 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: "600",
     color: "#3f3f3f",
+    fontFamily: 'Poppins'
   },
   logoutButton: {
     backgroundColor: "#ff4d4d",
@@ -100,48 +153,32 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
 
-  // Products grid
-  productsGrid: {
+  // Scroll content
+  contentContainer: {
     padding: 16,
-    flexDirection: "row",
-    flexWrap: "wrap",
-    justifyContent: "space-between",
+    alignItems: "center",
   },
-  productCard: {
-    width: "48%",
+  sectionTitle: {
+    fontSize: 20,
+    fontWeight: "700",
+    marginBottom: 16,
+    color: "#3f3f3f",
+  },
+  uvCard: {
+    width: "90%",
     backgroundColor: "rgba(255,255,255,0.85)",
     borderRadius: 20,
-    padding: 12,
-    marginBottom: 16,
-  },
-  productImage: {
-    height: 120,
-    borderRadius: 15,
-    backgroundColor: "#d0d0d0",
-    justifyContent: "center",
+    padding: 20,
     alignItems: "center",
-    marginBottom: 10,
   },
-  imageText: {
-    color: "#555",
-  },
-  productName: {
+  uvText: {
     fontSize: 16,
+    marginBottom: 8,
+    color: "#3f3f3f",
     fontWeight: "600",
-    color: "#3f3f3f",
-    marginBottom: 6,
   },
-  ratingRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-  rating: {
-    fontSize: 14,
-    color: "#3f3f3f",
-  },
-  icon: {
-    fontSize: 18,
-    color: "#999",
+  errorText: {
+    fontSize: 16,
+    color: "red",
   },
 });

@@ -1,9 +1,8 @@
 import { useRef, useState } from "react";
 import { View, Text, StyleSheet, TouchableOpacity } from "react-native";
 import { CameraView, useCameraPermissions } from "expo-camera";
-import { router } from "expo-router";
 
-export default function CameraScreen() {
+export default function CameraScreen({ onPhotoTaken, onCancel }) {
   const cameraRef = useRef(null);
   const [permission, requestPermission] = useCameraPermissions();
   const [taking, setTaking] = useState(false);
@@ -31,30 +30,21 @@ export default function CameraScreen() {
     });
 
     setTaking(false);
-
-    router.push({
-      pathname: "/products/new",
-      params: { uri: photo.uri },
-    });
-  };
-
-  const addWithoutPhoto = () => {
-    router.push({
-      pathname: "/products/new",
-      params: { uri: null },
-    });
+    onPhotoTaken(photo.uri); // return the URI to NewProduct
   };
 
   return (
     <View style={styles.container}>
       <CameraView ref={cameraRef} style={styles.camera} facing="back" />
 
-      {/* Controls stacked vertically */}
       <View style={styles.controls}>
         <TouchableOpacity style={styles.captureButton} onPress={takePhoto} />
-        <TouchableOpacity style={styles.noPhotoButton} onPress={addWithoutPhoto}>
-          <Text style={styles.noPhotoText}>No Photo</Text>
-        </TouchableOpacity>
+
+        {onCancel && (
+          <TouchableOpacity style={styles.cancelButton} onPress={onCancel}>
+            <Text style={styles.cancelText}>Cancel</Text>
+          </TouchableOpacity>
+        )}
       </View>
     </View>
   );
@@ -63,14 +53,12 @@ export default function CameraScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "black" },
   camera: { flex: 1 },
-
   controls: {
     position: "absolute",
     bottom: 60,
     width: "100%",
     alignItems: "center",
   },
-
   captureButton: {
     width: 75,
     height: 75,
@@ -78,36 +66,19 @@ const styles = StyleSheet.create({
     backgroundColor: "white",
     borderWidth: 6,
     borderColor: "rgba(0,0,0,0.2)",
-    marginBottom: 15, // space between buttons
+    marginBottom: 15,
   },
-
-  noPhotoButton: {
-    backgroundColor: "#3f3f3f",
-    paddingVertical: 8,
-    paddingHorizontal: 16,
+  cancelButton: {
+    marginTop: 10,
+    padding: 10,
+    backgroundColor: "rgba(0,0,0,0.5)",
     borderRadius: 10,
   },
-
-  noPhotoText: {
-    color: "white",
-    fontWeight: "600",
-    fontSize: 14,
-  },
-
-  permissionContainer: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-
-  permissionText: {
-    fontSize: 18,
-    marginBottom: 20,
+  cancelText: {
     color: "#fff",
+    fontSize: 16,
   },
-
-  permissionButton: {
-    fontSize: 18,
-    color: "blue",
-  },
+  permissionContainer: { flex: 1, justifyContent: "center", alignItems: "center" },
+  permissionText: { fontSize: 18, marginBottom: 20, color: "#fff" },
+  permissionButton: { fontSize: 18, color: "blue" },
 });

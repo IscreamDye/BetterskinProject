@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useEffect, useState, useRef } from "react";
 import {
   View,
   Text,
@@ -9,23 +9,25 @@ import {
   Modal,
 } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
-import CameraScreen from "./camera"; // import your camera component
-import { router } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
+import CameraScreen from "./camera"; // modal camera
 
 const categories = [
   "Cleanser",
   "Toner",
   "Serum / Active Ingredients",
   "Moisturizer",
+  "Sunscreen",
   "Eye cream",
   "Exfoliant",
-  "Sunscreen",
 ];
 
-export default function NewProduct({ route }) {
+export default function EditProduct() {
+  const { id } = useLocalSearchParams();
   const insets = useSafeAreaInsets();
 
+  const [product, setProduct] = useState(null);
   const [name, setName] = useState("");
   const [brand, setBrand] = useState("");
   const [ingredients, setIngredients] = useState("");
@@ -33,46 +35,44 @@ export default function NewProduct({ route }) {
   const [imageUri, setImageUri] = useState(null);
 
   const [showCamera, setShowCamera] = useState(false);
-  const [id, setId] = useState(null); // optional product ID for editing
 
-  // Load existing product if editing
+  // ✅ Load product once
   useEffect(() => {
     const loadProduct = async () => {
       if (!id) return;
       const stored = await AsyncStorage.getItem("products");
       const products = stored ? JSON.parse(stored) : [];
-      const product = products.find((p) => p.id === id);
-      if (product) {
-        setName(product.name);
-        setBrand(product.brand);
-        setIngredients(product.ingredients);
-        setCategory(product.category);
-        setImageUri(product.imageUri || null);
-      }
+      const found = products.find((p) => p.id === id);
+      if (!found) return;
+
+      setProduct(found);
+      setName(found.name);
+      setBrand(found.brand || "");
+      setIngredients(found.ingredients || "");
+      setCategory(found.category || "Cleanser");
+      setImageUri(found.imageUri || null);
     };
     loadProduct();
   }, [id]);
 
-const saveProduct = async () => {
-  const stored = await AsyncStorage.getItem("products");
-  const products = stored ? JSON.parse(stored) : [];
+  if (!product) return null; // optional: loading indicator
 
-  const newId = id || Date.now().toString();
+  const saveChanges = async () => {
+    const stored = await AsyncStorage.getItem("products");
+    const products = stored ? JSON.parse(stored) : [];
 
-  const updatedProduct = { id: newId, name, brand, ingredients, category, imageUri };
+    const updated = products.map((p) =>
+      p.id === id
+        ? { ...p, name, brand, ingredients, category, imageUri }
+        : p
+    );
 
-  const updatedProducts = products.filter((p) => p.id !== newId);
-  updatedProducts.push(updatedProduct);
-
-  await AsyncStorage.setItem("products", JSON.stringify(updatedProducts));
-
-  // Navigate back to the product list
-  router.replace("/myproducts"); // or router.push("/myproducts")
-};
-
+    await AsyncStorage.setItem("products", JSON.stringify(updated));
+    router.back(); // go back to MyProducts
+  };
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
+    <SafeAreaView style={[styles.container, { paddingTop: insets.top + 10 }]}>
       <TouchableOpacity
         style={styles.image}
         activeOpacity={0.85}
@@ -117,11 +117,11 @@ const saveProduct = async () => {
         ))}
       </View>
 
-      <TouchableOpacity style={styles.saveButton} onPress={saveProduct}>
-        <Text style={styles.saveText}>Save Product</Text>
+      <TouchableOpacity style={styles.saveButton} onPress={saveChanges}>
+        <Text style={styles.saveText}>Save changes</Text>
       </TouchableOpacity>
 
-      {/* Camera Modal */}
+      {/* Camera modal */}
       <Modal visible={showCamera} animationType="slide">
         <CameraScreen
           onPhotoTaken={(uri) => {
@@ -131,51 +131,26 @@ const saveProduct = async () => {
           onCancel={() => setShowCamera(false)}
         />
       </Modal>
-    </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 20, backgroundColor: "#f2f2f2" },
+  container: { flex: 1, paddingHorizontal: 20, backgroundColor: "#f2f2f2" },
   image: {
-    width: "100%",
     height: 220,
     borderRadius: 20,
-    marginBottom: 20,
-    backgroundColor: "#ccc",
+    backgroundColor: "#ddd",
     justifyContent: "center",
     alignItems: "center",
-    overflow: "hidden",
+    marginBottom: 20,
   },
-  fullImage: { width: "100%", height: "100%" },
-  addPhotoText: { fontSize: 56, color: "#777", fontWeight: "300" },
-  input: {
-    backgroundColor: "white",
-    borderRadius: 15,
-    paddingHorizontal: 15,
-    paddingVertical: 12,
-    fontSize: 16,
-    marginBottom: 15,
-    borderWidth: 1,
-    borderColor: "#ddd",
-  },
+  fullImage: { width: "100%", height: "100%", borderRadius: 20 },
+  addPhotoText: { fontSize: 48, color: "#777" },
+  input: { backgroundColor: "#fff", borderRadius: 15, padding: 14, marginBottom: 15, fontSize: 16 },
   categoryRow: { flexDirection: "row", flexWrap: "wrap", marginBottom: 25 },
-  category: {
-    paddingVertical: 8,
-    paddingHorizontal: 14,
-    borderRadius: 20,
-    backgroundColor: "#e0e0e0",
-    marginRight: 10,
-    marginBottom: 10,
-    fontSize: 14,
-    color: "#333",
-  },
-  activeCategory: { backgroundColor: "#6b6b6b", color: "white" },
-  saveButton: {
-    backgroundColor: "#3f3f3f",
-    paddingVertical: 16,
-    borderRadius: 20,
-    alignItems: "center",
-  },
-  saveText: { color: "white", fontSize: 18, fontWeight: "600" },
+  category: { paddingVertical: 8, paddingHorizontal: 14, borderRadius: 20, backgroundColor: "#e0e0e0", marginRight: 10, marginBottom: 10 },
+  activeCategory: { backgroundColor: "#333", color: "#fff" },
+  saveButton: { backgroundColor: "#3f3f3f", paddingVertical: 16, borderRadius: 20, alignItems: "center" },
+  saveText: { color: "#fff", fontSize: 18, fontWeight: "600" },
 });

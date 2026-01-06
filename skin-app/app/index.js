@@ -18,6 +18,7 @@ import {
 import { BlurView } from "expo-blur";
 import loginbg from "../assets/images/bg/img1.jpg";
 import { supabase } from "../lib/supabase";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 export default function LoginScreen() {
   const [email, setEmail] = useState("");
@@ -42,7 +43,18 @@ export default function LoginScreen() {
     if (error) {
       Alert.alert("Login failed", error.message);
     } else {
-      router.replace("/profile");
+      try {
+        const completed = await AsyncStorage.getItem("onboardingComplete");
+
+        if (completed === "true") {
+          router.replace("/profile"); // Already did survey
+        } else {
+          router.replace("/quiz"); // Redirect to survey
+        }
+      } catch (e) {
+        console.error("Failed to check onboarding:", e);
+        router.replace("/profile"); // Fallback
+      }
     }
   };
 

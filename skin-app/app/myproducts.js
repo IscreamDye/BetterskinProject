@@ -1,31 +1,32 @@
-import { useEffect, useState } from "react";
+import { useState, useCallback } from "react";
 import {
-  View,
   Text,
   StyleSheet,
   TouchableOpacity,
   Image,
   FlatList,
   Alert,
+  SafeAreaView,
 } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { useSafeAreaInsets, SafeAreaView } from "react-native-safe-area-context";
-import { router } from "expo-router";
-import BottomNav from "./BottomNav"; // make sure path is correct
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { router, useFocusEffect } from "expo-router";
+import BottomNav from "./BottomNav";
 
 export default function MyProducts() {
-  
   const [products, setProducts] = useState([]);
-  const insets = useSafeAreaInsets(); // top/bottom safe area
+  const insets = useSafeAreaInsets();
 
-  useEffect(() => {
-    loadProducts();
-  }, []);
-
-  const loadProducts = async () => {
+  const loadProducts = useCallback(async () => {
     const stored = await AsyncStorage.getItem("products");
     if (stored) setProducts(JSON.parse(stored));
-  };
+  }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      loadProducts();
+    }, [loadProducts])
+  );
 
   const deleteProduct = async (id) => {
     Alert.alert(
@@ -49,54 +50,47 @@ export default function MyProducts() {
   return (
     <SafeAreaView style={styles.container}>
       <FlatList
-        data={products}
+        data={products.sort((a, b) => b.id - a.id)}
         numColumns={2}
         keyExtractor={(item) => item.id}
-        contentContainerStyle={[
-          styles.grid,
-          { paddingBottom: insets.bottom + 100, paddingTop: insets.top + 10 },
-        ]}
+        contentContainerStyle={{
+          paddingBottom: insets.bottom + 100,
+          paddingTop: insets.top + 10,
+          paddingHorizontal: 15,
+        }}
         renderItem={({ item }) => (
           <TouchableOpacity
             style={styles.card}
             activeOpacity={0.85}
+            onPress={() => router.push(`/products/${item.id}`)} // open [id].js for editing
+
             onLongPress={() => deleteProduct(item.id)}
           >
-            <Image source={{ uri: item.imageUri }} style={styles.image} />
-            <Text style={styles.name}>{item.name}</Text>
+            <Image
+              source={item.imageUri ? { uri: item.imageUri } : null}
+              style={styles.image}
+            />
+            <Text style={styles.name}>{item.name || "Unnamed Product"}</Text>
             <Text style={styles.category}>{item.category}</Text>
           </TouchableOpacity>
         )}
-        ListEmptyComponent={
-          <Text style={styles.empty}>No products yet</Text>
-        }
+        ListEmptyComponent={<Text style={styles.empty}>No products yet</Text>}
       />
 
-      {/* Floating Add Button */}
       <TouchableOpacity
-      style={[
-        styles.addButton,
-        { bottom: insets.bottom + 100 }, // above BottomNav + safe area
-      ]}
-      onPress={() => router.push("/products/camera")}
-    >
-      <Text style={styles.addText}>＋</Text>
-    </TouchableOpacity>
+        style={[styles.addButton, { bottom: insets.bottom + 100 }]}
+        onPress={() => router.push("/products/new")}
+      >
+        <Text style={styles.addText}>＋</Text>
+      </TouchableOpacity>
 
-      {/* Shared Bottom Navigation */}
       <BottomNav />
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#f90f90f2",
-  },
-  grid: {
-    padding: 15,
-  },
+  container: { flex: 1, backgroundColor: "#f2f2f2" },
   card: {
     width: "48%",
     backgroundColor: "#fff",
@@ -111,40 +105,23 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     backgroundColor: "#ddd",
   },
-  name: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: "#333",
-  },
-  category: {
-    fontSize: 12,
-    color: "#777",
-  },
-  empty: {
-    textAlign: "center",
-    marginTop: 80,
-    fontSize: 16,
-    color: "#777",
-  },
+  name: { fontSize: 14, fontWeight: "600", color: "#333" },
+  category: { fontSize: 12, color: "#777" },
+  empty: { textAlign: "center", marginTop: 80, fontSize: 16, color: "#777" },
   addButton: {
-  position: "absolute",
-  right: 50,
-  width: 60,
-  height: 60,
-  borderRadius: 30,
-  backgroundColor: "#333",
-  justifyContent: "center",
-  alignItems: "center",
-  elevation: 5,
-  shadowColor: "#000",
-  shadowOffset: { width: 0, height: 2 },
-  shadowOpacity: 0.25,
-  shadowRadius: 3.84,
-},
-
-  addText: {
-    color: "white",
-    fontSize: 32,
-    lineHeight: 36,
+    position: "absolute",
+    right: 50,
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: "#333",
+    justifyContent: "center",
+    alignItems: "center",
+    elevation: 5,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
   },
+  addText: { color: "white", fontSize: 32, lineHeight: 36 },
 });

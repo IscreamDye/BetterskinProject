@@ -17,7 +17,7 @@ export default function RoutineScreen() {
   const [routineType, setRoutineType] = useState("morning");
   const [products, setProducts] = useState([]);
   const [displayedProducts, setDisplayedProducts] = useState([]);
-  const insets = useSafeAreaInsets(); // <-- use safe area
+  const insets = useSafeAreaInsets();
 
   useEffect(() => {
     loadProducts();
@@ -39,14 +39,58 @@ export default function RoutineScreen() {
     order.forEach((cat) => {
       products
         .filter((p) => p.category === cat)
-        .forEach((p) => filtered.push(p));
+        .forEach((p) => {
+          // Add checked state for each product
+          if (p.checked === undefined) p.checked = false;
+          filtered.push(p);
+        });
     });
 
     setDisplayedProducts(filtered);
   };
 
-  const markUsed = (id) => {
-    setDisplayedProducts(displayedProducts.filter((p) => p.id !== id));
+  const toggleCheck = (id) => {
+    setDisplayedProducts((prev) =>
+      prev.map((p) =>
+        p.id === id ? { ...p, checked: !p.checked } : p
+      )
+    );
+  };
+
+  const renderProduct = ({ item }) => {
+    return (
+      <TouchableOpacity
+        style={[
+          styles.productCard,
+          item.checked && styles.checkedCard,
+        ]}
+        onPress={() => toggleCheck(item.id)}
+      >
+        <View style={styles.productInfo}>
+          <View style={styles.checkbox}>
+            {item.checked && <View style={styles.checkboxTick} />}
+          </View>
+          <View>
+            <Text
+              style={[
+                styles.productName,
+                item.checked && styles.checkedText,
+              ]}
+            >
+              {item.name}
+            </Text>
+            <Text
+              style={[
+                styles.productCategory,
+                item.checked && styles.checkedText,
+              ]}
+            >
+              {item.category}
+            </Text>
+          </View>
+        </View>
+      </TouchableOpacity>
+    );
   };
 
   return (
@@ -80,22 +124,9 @@ export default function RoutineScreen() {
         keyExtractor={(item) => item.id}
         contentContainerStyle={{
           padding: 15,
-          paddingBottom: insets.bottom + 80, // space for BottomNav
+          paddingBottom: insets.bottom + 80,
         }}
-        renderItem={({ item }) => (
-          <View style={styles.productCard}>
-            <View>
-              <Text style={styles.productName}>{item.name}</Text>
-              <Text style={styles.productCategory}>{item.category}</Text>
-            </View>
-            <TouchableOpacity
-              style={styles.usedButton}
-              onPress={() => markUsed(item.id)}
-            >
-              <Text style={styles.usedText}>X</Text>
-            </TouchableOpacity>
-          </View>
-        )}
+        renderItem={renderProduct}
         ListEmptyComponent={
           <Text style={{ textAlign: "center", marginTop: 50 }}>
             No products in this routine
@@ -141,21 +172,40 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     padding: 15,
     marginBottom: 12,
+  },
+
+  checkedCard: {
+    backgroundColor: "#e0e0e0",
+  },
+
+  productInfo: {
     flexDirection: "row",
-    justifyContent: "space-between",
     alignItems: "center",
+  },
+
+  checkbox: {
+    width: 20,
+    height: 20,
+    borderRadius: 4,
+    borderWidth: 2,
+    borderColor: "#333",
+    justifyContent: "center",
+    alignItems: "center",
+    marginRight: 12,
+  },
+
+  checkboxTick: {
+    width: 12,
+    height: 12,
+    backgroundColor: "#333",
   },
 
   productName: { fontSize: 16, fontWeight: "600" },
 
   productCategory: { fontSize: 14, color: "#777" },
 
-  usedButton: {
-    backgroundColor: "#3f3f3f",
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    borderRadius: 10,
+  checkedText: {
+    color: "#777",
+    textDecorationLine: "line-through",
   },
-
-  usedText: { color: "#fff", fontWeight: "600" },
 });

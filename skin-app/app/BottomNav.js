@@ -10,6 +10,7 @@ export default function BottomNav() {
         <NavButton label="Home" onPress={() => router.push("/profile")} />
         <NavButton label="My Products" onPress={() => router.push("/myproducts")} />
         <NavButton label="Routine" onPress={() => router.push("/routine")} />
+        <NavButton label="Profile" onPress={() => router.push("/myprofile")} />
       </BlurView>
     </SafeAreaView>
   );
