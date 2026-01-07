@@ -56,7 +56,7 @@ export default function DashboardScreen() {
         `https://api.openuv.io/api/v1/uv?lat=${coords.latitude}&lng=${coords.longitude}`,
         {
           headers: {
-            "x-access-token": "openuv-2x9krmk2fbn3r-io", // replace with your API key
+            "x-access-token": "openuv-2x9krmk2fbn3r-io", // 
           },
         }
       );
@@ -169,7 +169,7 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(255,255,255,0.85)",
     borderRadius: 20,
     padding: 20,
-    alignItems: "center",
+    alignItems: "left",
   },
   uvText: {
     fontSize: 16,

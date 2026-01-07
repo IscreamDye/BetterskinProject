@@ -1,18 +1,20 @@
-import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
+import { Text, TouchableOpacity, StyleSheet, View } from "react-native";
 import { BlurView } from "expo-blur";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { router } from "expo-router";
 
 export default function BottomNav() {
+  const insets = useSafeAreaInsets();
+
   return (
-    <SafeAreaView edges={['bottom']} style={styles.safeArea}>
+    <View style={[styles.container, { paddingBottom: insets.bottom }]}>
       <BlurView intensity={80} style={styles.bottomBar}>
         <NavButton label="Home" onPress={() => router.push("/profile")} />
         <NavButton label="My Products" onPress={() => router.push("/myproducts")} />
         <NavButton label="Routine" onPress={() => router.push("/routine")} />
         <NavButton label="Profile" onPress={() => router.push("/myprofile")} />
       </BlurView>
-    </SafeAreaView>
+    </View>
   );
 }
 
@@ -24,17 +26,20 @@ function NavButton({ label, onPress }) {
   );
 }
 
+/* ---------------- STYLES ---------------- */
+
 const styles = StyleSheet.create({
-  safeArea: {
-    position: 'absolute',
+  container: {
+    position: "absolute",
     bottom: 0,
-    width: '100%',
+    width: "100%",
+    backgroundColor: "rgba(255,255,255,0.85)", // fallback behind blur
   },
   bottomBar: {
     flexDirection: "row",
     justifyContent: "space-around",
-    paddingVertical: 15,
-    backgroundColor: "rgba(255,255,255,0.85)",
+    paddingTop: 15,
+    paddingBottom: 15,
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
   },

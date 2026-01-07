@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState } from "react";
 import {
   View,
   Text,
@@ -11,7 +11,7 @@ import {
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { router, useLocalSearchParams } from "expo-router";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
-import CameraScreen from "./camera"; // modal camera
+import CameraScreen from "./camera";
 
 const categories = [
   "Cleanser",
@@ -33,10 +33,8 @@ export default function EditProduct() {
   const [ingredients, setIngredients] = useState("");
   const [category, setCategory] = useState("Cleanser");
   const [imageUri, setImageUri] = useState(null);
-
   const [showCamera, setShowCamera] = useState(false);
 
-  // ✅ Load product once
   useEffect(() => {
     const loadProduct = async () => {
       if (!id) return;
@@ -46,7 +44,7 @@ export default function EditProduct() {
       if (!found) return;
 
       setProduct(found);
-      setName(found.name);
+      setName(found.name || "");
       setBrand(found.brand || "");
       setIngredients(found.ingredients || "");
       setCategory(found.category || "Cleanser");
@@ -55,7 +53,7 @@ export default function EditProduct() {
     loadProduct();
   }, [id]);
 
-  if (!product) return null; // optional: loading indicator
+  if (!product) return null;
 
   const saveChanges = async () => {
     const stored = await AsyncStorage.getItem("products");
@@ -68,11 +66,18 @@ export default function EditProduct() {
     );
 
     await AsyncStorage.setItem("products", JSON.stringify(updated));
-    router.back(); // go back to MyProducts
+    router.back();
   };
 
   return (
-    <SafeAreaView style={[styles.container, { paddingTop: insets.top + 10 }]}>
+    <SafeAreaView style={styles.container}>
+      {/* 🔹 Top bar with back button */}
+      <View style={[styles.topBar, { paddingTop: insets.top + 5 }]}>
+        <TouchableOpacity onPress={() => router.back()}>
+          <Text style={styles.backText}>← Back</Text>
+        </TouchableOpacity>
+      </View>
+
       <TouchableOpacity
         style={styles.image}
         activeOpacity={0.85}
@@ -91,12 +96,14 @@ export default function EditProduct() {
         value={name}
         onChangeText={setName}
       />
+
       <TextInput
         placeholder="Brand"
         style={styles.input}
         value={brand}
         onChangeText={setBrand}
       />
+
       <TextInput
         placeholder="Ingredients"
         style={[styles.input, { height: 80 }]}
@@ -135,8 +142,25 @@ export default function EditProduct() {
   );
 }
 
+/* ---------------- STYLES ---------------- */
+
 const styles = StyleSheet.create({
-  container: { flex: 1, paddingHorizontal: 20, backgroundColor: "#f2f2f2" },
+  container: {
+    flex: 1,
+    paddingHorizontal: 20,
+    backgroundColor: "#f2f2f2",
+  },
+
+  topBar: {
+    marginBottom: 10,
+  },
+
+  backText: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#333",
+  },
+
   image: {
     height: 220,
     borderRadius: 20,
@@ -145,12 +169,56 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginBottom: 20,
   },
-  fullImage: { width: "100%", height: "100%", borderRadius: 20 },
-  addPhotoText: { fontSize: 48, color: "#777" },
-  input: { backgroundColor: "#fff", borderRadius: 15, padding: 14, marginBottom: 15, fontSize: 16 },
-  categoryRow: { flexDirection: "row", flexWrap: "wrap", marginBottom: 25 },
-  category: { paddingVertical: 8, paddingHorizontal: 14, borderRadius: 20, backgroundColor: "#e0e0e0", marginRight: 10, marginBottom: 10 },
-  activeCategory: { backgroundColor: "#333", color: "#fff" },
-  saveButton: { backgroundColor: "#3f3f3f", paddingVertical: 16, borderRadius: 20, alignItems: "center" },
-  saveText: { color: "#fff", fontSize: 18, fontWeight: "600" },
+
+  fullImage: {
+    width: "100%",
+    height: "100%",
+    borderRadius: 20,
+  },
+
+  addPhotoText: {
+    fontSize: 48,
+    color: "#777",
+  },
+
+  input: {
+    backgroundColor: "#fff",
+    borderRadius: 15,
+    padding: 14,
+    marginBottom: 15,
+    fontSize: 16,
+  },
+
+  categoryRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    marginBottom: 25,
+  },
+
+  category: {
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+    borderRadius: 20,
+    backgroundColor: "#e0e0e0",
+    marginRight: 10,
+    marginBottom: 10,
+  },
+
+  activeCategory: {
+    backgroundColor: "#333",
+    color: "#fff",
+  },
+
+  saveButton: {
+    backgroundColor: "#3f3f3f",
+    paddingVertical: 16,
+    borderRadius: 20,
+    alignItems: "center",
+  },
+
+  saveText: {
+    color: "#fff",
+    fontSize: 18,
+    fontWeight: "600",
+  },
 });
