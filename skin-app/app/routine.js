@@ -5,6 +5,7 @@ import {
   TouchableOpacity,
   FlatList,
   StyleSheet,
+  Alert,
 } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -19,35 +20,51 @@ export default function RoutineScreen() {
   const [routine, setRoutine] = useState([]);
   const [selectedDate, setSelectedDate] = useState(new Date());
 
+  // Track removed products per routine type
+  const [removedProducts, setRemovedProducts] = useState({
+    morning: [],
+    evening: [],
+  });
+
+  // Track checked products per day and routine type
+  const [checkedProducts, setCheckedProducts] = useState({
+    morning: {},
+    evening: {},
+  });
+
   // Map UI categories → engine-friendly keys
   const CATEGORY_MAP = {
-    "Cleanser": "cleanser",
-    "Toner": "toner",
+    Cleanser: "cleanser",
+    Toner: "toner",
     "Serum / Active Ingredients": "serums",
-    "Moisturizer": "moisturizer",
+    Moisturizer: "moisturizer",
     "Eye cream": "eye_cream",
-    "Exfoliant": "exfoliant",
-    "Sunscreen": "spf",
+    Exfoliant: "exfoliant",
+    Sunscreen: "spf",
   };
 
-  /* ---------------- LOAD PRODUCTS ---------------- */
+  /* ---------------- LOAD FROM STORAGE ---------------- */
   useEffect(() => {
-    loadProducts();
-  }, []);
+    const loadAll = async () => {
+      const storedProducts = await AsyncStorage.getItem("products");
+      if (storedProducts) setProducts(JSON.parse(storedProducts));
 
-  const loadProducts = async () => {
-    const stored = await AsyncStorage.getItem("products");
-    if (stored) setProducts(JSON.parse(stored));
-  };
+      const removed = await AsyncStorage.getItem("removedProducts");
+      if (removed) setRemovedProducts(JSON.parse(removed));
+
+      const checked = await AsyncStorage.getItem("checkedProducts");
+      if (checked) setCheckedProducts(JSON.parse(checked));
+    };
+    loadAll();
+  }, []);
 
   /* ---------------- BUILD ROUTINE ---------------- */
   useEffect(() => {
     generateRoutine();
-  }, [products, routineType, selectedDate]);
+  }, [products, routineType, selectedDate, removedProducts, checkedProducts]);
 
   const generateRoutine = () => {
-    // Normalize categories for engine
-    const normalizedProducts = products.map(p => ({
+    const normalizedProducts = products.map((p) => ({
       ...p,
       engineCategory: CATEGORY_MAP[p.category] || null,
     }));
@@ -58,8 +75,24 @@ export default function RoutineScreen() {
       date: selectedDate,
     });
 
-    // Reset checked state
-    setRoutine(routine.map(p => ({ ...p, checked: false })));
+    // Apply removedProducts filtering
+    const filtered = routine.filter((p) => {
+      const todayKey = p.id + "_" + selectedDate.toDateString();
+      return (
+        !removedProducts[routineType].includes(p.id) &&
+        !removedProducts[routineType].includes(todayKey)
+      );
+    });
+
+    // Apply checked state
+    const todayKey = selectedDate.toDateString();
+    const routineWithChecked = filtered.map((p) => ({
+      ...p,
+      checked:
+        checkedProducts[routineType]?.[todayKey]?.includes(p.id) ?? false,
+    }));
+
+    setRoutine(routineWithChecked);
   };
 
   /* ---------------- CALENDAR (7 DAYS) ---------------- */
@@ -76,10 +109,95 @@ export default function RoutineScreen() {
 
   const isSameDay = (a, b) => a.toDateString() === b.toDateString();
 
-  /* ---------------- INTERACTION ---------------- */
-  const toggleCheck = (id) => {
-    setRoutine(prev =>
-      prev.map(p => (p.id === id ? { ...p, checked: !p.checked } : p))
+  /* ---------------- INTERACTIONS ---------------- */
+  const toggleCheck = async (id) => {
+    const todayKey = selectedDate.toDateString();
+    const dayChecked = checkedProducts[routineType]?.[todayKey] || [];
+    let newChecked;
+
+    if (dayChecked.includes(id)) {
+      newChecked = dayChecked.filter((i) => i !== id);
+    } else {
+      newChecked = [...dayChecked, id];
+    }
+
+    const updated = {
+      ...checkedProducts,
+      [routineType]: {
+        ...checkedProducts[routineType],
+        [todayKey]: newChecked,
+      },
+    };
+
+    setCheckedProducts(updated);
+    await AsyncStorage.setItem("checkedProducts", JSON.stringify(updated));
+  };
+
+  const removeProduct = async (product) => {
+    Alert.alert(
+      `Remove ${product.name}?`,
+      "Do you want to remove this product from just today or the whole week?",
+      [
+        {
+          text: "Cancel",
+          style: "cancel",
+        },
+        {
+          text: "Today",
+          onPress: async () => {
+            const todayKey = product.id + "_" + selectedDate.toDateString();
+            const updated = {
+              ...removedProducts,
+              [routineType]: [...removedProducts[routineType], todayKey],
+            };
+            setRemovedProducts(updated);
+            await AsyncStorage.setItem(
+              "removedProducts",
+              JSON.stringify(updated)
+            );
+          },
+        },
+        {
+          text: "Whole Week",
+          onPress: async () => {
+            const updated = {
+              ...removedProducts,
+              [routineType]: [...removedProducts[routineType], product.id],
+            };
+            setRemovedProducts(updated);
+            await AsyncStorage.setItem(
+              "removedProducts",
+              JSON.stringify(updated)
+            );
+          },
+        },
+      ]
+    );
+  };
+
+  const resetRoutine = async () => {
+    Alert.alert(
+      "Reset Routine",
+      "Do you want to reset all removed and checked products for both morning and evening routines?",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Yes",
+          onPress: async () => {
+            setRemovedProducts({ morning: [], evening: [] });
+            setCheckedProducts({ morning: {}, evening: {} });
+
+            await AsyncStorage.setItem(
+              "removedProducts",
+              JSON.stringify({ morning: [], evening: [] })
+            );
+            await AsyncStorage.setItem(
+              "checkedProducts",
+              JSON.stringify({ morning: {}, evening: {} })
+            );
+          },
+        },
+      ]
     );
   };
 
@@ -87,6 +205,7 @@ export default function RoutineScreen() {
     <TouchableOpacity
       style={[styles.productCard, item.checked && styles.checkedCard]}
       onPress={() => toggleCheck(item.id)}
+      onLongPress={() => removeProduct(item)} // long press triggers removal
     >
       <View style={styles.productInfo}>
         <View style={styles.checkbox}>
@@ -132,7 +251,7 @@ export default function RoutineScreen() {
 
       {/* 7-DAY CALENDAR */}
       <View style={styles.calendarRow}>
-        {weekDays.map(day => {
+        {weekDays.map((day) => {
           const active = isSameDay(day, selectedDate);
 
           return (
@@ -141,10 +260,14 @@ export default function RoutineScreen() {
               style={[styles.dayBox, active && styles.activeDayBox]}
               onPress={() => setSelectedDate(day)}
             >
-              <Text style={[styles.dayName, active && styles.activeDayText]}>
+              <Text
+                style={[styles.dayName, active && styles.activeDayText]}
+              >
                 {day.toLocaleDateString("en-US", { weekday: "short" })}
               </Text>
-              <Text style={[styles.dayNumber, active && styles.activeDayText]}>
+              <Text
+                style={[styles.dayNumber, active && styles.activeDayText]}
+              >
                 {day.getDate()}
               </Text>
             </TouchableOpacity>
@@ -152,7 +275,6 @@ export default function RoutineScreen() {
         })}
       </View>
 
-      {/* ROUTINE LIST */}
       <FlatList
         data={routine}
         keyExtractor={(item) => item.id}
@@ -166,6 +288,16 @@ export default function RoutineScreen() {
             No routine for this day
           </Text>
         }
+        ListFooterComponent={
+          <View style={{ alignItems: "center", marginTop: 10 }}>
+            <TouchableOpacity
+              style={styles.resetButton}
+              onPress={resetRoutine}
+            >
+              <Text style={styles.resetButtonText}>Reset Routine</Text>
+            </TouchableOpacity>
+          </View>
+        }
       />
 
       <BottomNav />
@@ -174,7 +306,6 @@ export default function RoutineScreen() {
 }
 
 /* ---------------- STYLES ---------------- */
-
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#f2f2f2" },
 
@@ -203,7 +334,6 @@ const styles = StyleSheet.create({
   },
 
   /* CALENDAR */
-
   calendarRow: {
     flexDirection: "row",
     justifyContent: "space-around",
@@ -240,7 +370,6 @@ const styles = StyleSheet.create({
   },
 
   /* PRODUCTS */
-
   productCard: {
     backgroundColor: "#fff",
     borderRadius: 12,
@@ -288,5 +417,17 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: "#999",
     marginTop: 2,
+  },
+
+  resetButton: {
+    paddingVertical: 10,
+    paddingHorizontal: 25,
+    borderRadius: 20,
+    backgroundColor: "#ff4d4d",
+  },
+  resetButtonText: {
+    color: "#fff",
+    fontWeight: "600",
+    fontSize: 16,
   },
 });

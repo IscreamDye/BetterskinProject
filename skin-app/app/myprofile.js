@@ -11,7 +11,7 @@ import {
 } from "react-native";
 import { BlurView } from "expo-blur";
 import { supabase } from "../lib/supabase";
-import loginbg from "../assets/images/bg/img3.jpg";
+import loginbg from "../assets/bg/img3.jpg";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import BottomNav from "./BottomNav";
 import { useSafeAreaInsets } from "react-native-safe-area-context";

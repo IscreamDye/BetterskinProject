@@ -11,7 +11,7 @@ import {
 } from "react-native";
 import { BlurView } from "expo-blur";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import loginbg from "../assets/images/bg/img3.jpg";
+import loginbg from "../assets/bg/img3.jpg";
 
 /* ---------------- QUESTIONS ---------------- */
 

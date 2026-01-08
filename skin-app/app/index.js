@@ -16,7 +16,7 @@ import {
   Keyboard,
 } from "react-native";
 import { BlurView } from "expo-blur";
-import loginbg from "../assets/images/bg/img1.jpg";
+import loginbg from "../assets/bg/img1.jpg";
 import { supabase } from "../lib/supabase";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 

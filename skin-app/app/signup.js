@@ -14,7 +14,7 @@ import {
 
 
 import { BlurView } from "expo-blur";
-import loginbg from "../assets/images/bg/img2.jpg";
+import loginbg from "../assets/bg/img2.jpg";
 import { supabase } from "../lib/supabase";
 
 
