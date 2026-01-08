@@ -7,6 +7,7 @@ import {
   StyleSheet,
   Image,
   Modal,
+  ScrollView,
 } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { router, useLocalSearchParams } from "expo-router";
@@ -23,6 +24,18 @@ const categories = [
   "Exfoliant",
 ];
 
+const serumTypes = [
+  "Vitamin C",
+  "Hyaluronic Acid",
+  "Niacinamide",
+  "Retinoid",
+  "Glycolic Acid",
+  "Lactic Acid",
+  "Mandelic Acid",
+  "BHA (Salicylic Acid)",
+  "Peptide",
+];
+
 export default function EditProduct() {
   const { id } = useLocalSearchParams();
   const insets = useSafeAreaInsets();
@@ -32,8 +45,10 @@ export default function EditProduct() {
   const [brand, setBrand] = useState("");
   const [ingredients, setIngredients] = useState("");
   const [category, setCategory] = useState("Cleanser");
+  const [serumType, setSerumType] = useState("");
   const [imageUri, setImageUri] = useState(null);
   const [showCamera, setShowCamera] = useState(false);
+  const [showSerumModal, setShowSerumModal] = useState(false);
 
   useEffect(() => {
     const loadProduct = async () => {
@@ -48,6 +63,7 @@ export default function EditProduct() {
       setBrand(found.brand || "");
       setIngredients(found.ingredients || "");
       setCategory(found.category || "Cleanser");
+      setSerumType(found.serumType || "");
       setImageUri(found.imageUri || null);
     };
     loadProduct();
@@ -61,7 +77,16 @@ export default function EditProduct() {
 
     const updated = products.map((p) =>
       p.id === id
-        ? { ...p, name, brand, ingredients, category, imageUri }
+        ? {
+            ...p,
+            name,
+            brand,
+            ingredients,
+            category,
+            serumType:
+              category === "Serum / Active Ingredients" ? serumType : "",
+            imageUri,
+          }
         : p
     );
 
@@ -71,64 +96,124 @@ export default function EditProduct() {
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* 🔹 Top bar with back button */}
-      <View style={[styles.topBar, { paddingTop: insets.top + 5 }]}>
-        <TouchableOpacity onPress={() => router.back()}>
-          <Text style={styles.backText}>← Back</Text>
-        </TouchableOpacity>
-      </View>
-
-      <TouchableOpacity
-        style={styles.image}
-        activeOpacity={0.85}
-        onPress={() => setShowCamera(true)}
+      <ScrollView
+        contentContainerStyle={{ paddingBottom: insets.bottom + 80 }}
       >
-        {imageUri ? (
-          <Image source={{ uri: imageUri }} style={styles.fullImage} />
-        ) : (
-          <Text style={styles.addPhotoText}>＋</Text>
-        )}
-      </TouchableOpacity>
+        {/* TOP BAR */}
+        <View style={styles.topBar}>
+          <TouchableOpacity onPress={() => router.back()}>
+            <Text style={styles.backText}>← Back</Text>
+          </TouchableOpacity>
+        </View>
 
-      <TextInput
-        placeholder="Product name"
-        style={styles.input}
-        value={name}
-        onChangeText={setName}
-      />
+        {/* IMAGE */}
+        <TouchableOpacity
+          style={styles.image}
+          activeOpacity={0.85}
+          onPress={() => setShowCamera(true)}
+        >
+          {imageUri ? (
+            <Image source={{ uri: imageUri }} style={styles.fullImage} />
+          ) : (
+            <Text style={styles.addPhotoText}>＋</Text>
+          )}
+        </TouchableOpacity>
 
-      <TextInput
-        placeholder="Brand"
-        style={styles.input}
-        value={brand}
-        onChangeText={setBrand}
-      />
+        {/* INPUTS */}
+        <TextInput
+          placeholder="Product name"
+          style={styles.input}
+          value={name}
+          onChangeText={setName}
+        />
 
-      <TextInput
-        placeholder="Ingredients"
-        style={[styles.input, { height: 80 }]}
-        value={ingredients}
-        onChangeText={setIngredients}
-        multiline
-      />
+        <TextInput
+          placeholder="Brand"
+          style={styles.input}
+          value={brand}
+          onChangeText={setBrand}
+        />
 
-      <View style={styles.categoryRow}>
-        {categories.map((c) => (
-          <Text
-            key={c}
-            style={[styles.category, category === c && styles.activeCategory]}
-            onPress={() => setCategory(c)}
+        <TextInput
+          placeholder="Ingredients"
+          style={[styles.input, { height: 80 }]}
+          value={ingredients}
+          onChangeText={setIngredients}
+          multiline
+        />
+
+        {/* CATEGORY */}
+        <View style={styles.categoryRow}>
+          {categories.map((c) => (
+            <TouchableOpacity
+              key={c}
+              onPress={() => {
+                setCategory(c);
+                if (c !== "Serum / Active Ingredients") {
+                  setSerumType("");
+                }
+              }}
+            >
+              <Text
+                style={[
+                  styles.category,
+                  category === c && styles.activeCategory,
+                ]}
+              >
+                {c}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+
+        {/* SERUM SELECT */}
+        {category === "Serum / Active Ingredients" && (
+          <TouchableOpacity
+            style={styles.selectBox}
+            onPress={() => setShowSerumModal(true)}
           >
-            {c}
-          </Text>
-        ))}
-      </View>
+            <Text
+              style={[
+                styles.selectText,
+                !serumType && { color: "#999" },
+              ]}
+            >
+              {serumType || "Select active ingredient"}
+            </Text>
+          </TouchableOpacity>
+        )}
 
-      <TouchableOpacity style={styles.saveButton} onPress={saveChanges}>
-        <Text style={styles.saveText}>Save changes</Text>
-      </TouchableOpacity>
+        {/* SAVE */}
+        <TouchableOpacity style={styles.saveButton} onPress={saveChanges}>
+          <Text style={styles.saveText}>Save changes</Text>
+        </TouchableOpacity>
+      </ScrollView>
 
-      {/* Camera modal */}
+      {/* SERUM MODAL */}
+      <Modal visible={showSerumModal} transparent animationType="slide">
+        <TouchableOpacity
+          style={styles.modalBackdrop}
+          activeOpacity={1}
+          onPress={() => setShowSerumModal(false)}
+        >
+          <View style={styles.modalContent}>
+            {serumTypes.map((type) => (
+              <TouchableOpacity
+                key={type}
+                style={styles.dropdownItem}
+                onPress={() => {
+                  setSerumType(type);
+                  setShowSerumModal(false);
+                }}
+              >
+                <Text style={styles.dropdownItemText}>{type}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </TouchableOpacity>
+      </Modal>
+
+      {/* CAMERA */}
       <Modal visible={showCamera} animationType="slide">
         <CameraScreen
           onPhotoTaken={(uri) => {
@@ -187,12 +272,14 @@ const styles = StyleSheet.create({
     padding: 14,
     marginBottom: 15,
     fontSize: 16,
+    borderWidth: 1,
+    borderColor: "#ddd",
   },
 
   categoryRow: {
     flexDirection: "row",
     flexWrap: "wrap",
-    marginBottom: 25,
+    marginBottom: 15,
   },
 
   category: {
@@ -209,6 +296,21 @@ const styles = StyleSheet.create({
     color: "#fff",
   },
 
+  selectBox: {
+    backgroundColor: "#fff",
+    borderRadius: 15,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    borderWidth: 1,
+    borderColor: "#ddd",
+    marginBottom: 20,
+  },
+
+  selectText: {
+    fontSize: 16,
+    color: "#333",
+  },
+
   saveButton: {
     backgroundColor: "#3f3f3f",
     paddingVertical: 16,
@@ -220,5 +322,29 @@ const styles = StyleSheet.create({
     color: "#fff",
     fontSize: 18,
     fontWeight: "600",
+  },
+
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.4)",
+    justifyContent: "flex-end",
+  },
+
+  modalContent: {
+    backgroundColor: "#fff",
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    paddingBottom: 30,
+  },
+
+  dropdownItem: {
+    paddingVertical: 16,
+    paddingHorizontal: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: "#eee",
+  },
+
+  dropdownItemText: {
+    fontSize: 16,
   },
 });

@@ -81,12 +81,6 @@ return (
                 >
                   Sign up
                 </Text>
-                <Text
-                  style={styles.title_mid}
-                  onPress={() => router.push("/quiz")}
-                >
-                  quiz
-                </Text>
               </View>
 
               <TextInput

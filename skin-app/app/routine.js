@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import {
   View,
   Text,
@@ -8,95 +8,107 @@ import {
 } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import BottomNav from "./BottomNav"; // adjust path
-
-const morningOrder = ["Cleanser", "Toner", "Serum", "Moisturizer", "Sunscreen"];
-const eveningOrder = ["Cleanser", "Toner", "Serum", "Moisturizer"];
+import BottomNav from "./BottomNav";
+import { buildRoutine } from "./lib/routineEngine"; // 👈 engine
 
 export default function RoutineScreen() {
-  const [routineType, setRoutineType] = useState("morning");
-  const [products, setProducts] = useState([]);
-  const [displayedProducts, setDisplayedProducts] = useState([]);
   const insets = useSafeAreaInsets();
 
+  const [routineType, setRoutineType] = useState("morning");
+  const [products, setProducts] = useState([]);
+  const [routine, setRoutine] = useState([]);
+  const [selectedDate, setSelectedDate] = useState(new Date());
+
+  // Map UI categories → engine-friendly keys
+  const CATEGORY_MAP = {
+    "Cleanser": "cleanser",
+    "Toner": "toner",
+    "Serum / Active Ingredients": "serums",
+    "Moisturizer": "moisturizer",
+    "Eye cream": "eye_cream",
+    "Exfoliant": "exfoliant",
+    "Sunscreen": "spf",
+  };
+
+  /* ---------------- LOAD PRODUCTS ---------------- */
   useEffect(() => {
     loadProducts();
   }, []);
-
-  useEffect(() => {
-    filterRoutine();
-  }, [products, routineType]);
 
   const loadProducts = async () => {
     const stored = await AsyncStorage.getItem("products");
     if (stored) setProducts(JSON.parse(stored));
   };
 
-  const filterRoutine = () => {
-    const order = routineType === "morning" ? morningOrder : eveningOrder;
+  /* ---------------- BUILD ROUTINE ---------------- */
+  useEffect(() => {
+    generateRoutine();
+  }, [products, routineType, selectedDate]);
 
-    const filtered = [];
-    order.forEach((cat) => {
-      products
-        .filter((p) => p.category === cat)
-        .forEach((p) => {
-          // Add checked state for each product
-          if (p.checked === undefined) p.checked = false;
-          filtered.push(p);
-        });
+  const generateRoutine = () => {
+    // Normalize categories for engine
+    const normalizedProducts = products.map(p => ({
+      ...p,
+      engineCategory: CATEGORY_MAP[p.category] || null,
+    }));
+
+    const { routine } = buildRoutine({
+      products: normalizedProducts,
+      routineType,
+      date: selectedDate,
     });
 
-    setDisplayedProducts(filtered);
+    // Reset checked state
+    setRoutine(routine.map(p => ({ ...p, checked: false })));
   };
 
+  /* ---------------- CALENDAR (7 DAYS) ---------------- */
+  const weekDays = useMemo(() => {
+    const start = new Date();
+    start.setHours(0, 0, 0, 0);
+
+    return Array.from({ length: 7 }).map((_, i) => {
+      const d = new Date(start);
+      d.setDate(start.getDate() + i);
+      return d;
+    });
+  }, []);
+
+  const isSameDay = (a, b) => a.toDateString() === b.toDateString();
+
+  /* ---------------- INTERACTION ---------------- */
   const toggleCheck = (id) => {
-    setDisplayedProducts((prev) =>
-      prev.map((p) =>
-        p.id === id ? { ...p, checked: !p.checked } : p
-      )
+    setRoutine(prev =>
+      prev.map(p => (p.id === id ? { ...p, checked: !p.checked } : p))
     );
   };
 
-  const renderProduct = ({ item }) => {
-    return (
-      <TouchableOpacity
-        style={[
-          styles.productCard,
-          item.checked && styles.checkedCard,
-        ]}
-        onPress={() => toggleCheck(item.id)}
-      >
-        <View style={styles.productInfo}>
-          <View style={styles.checkbox}>
-            {item.checked && <View style={styles.checkboxTick} />}
-          </View>
-          <View>
-            <Text
-              style={[
-                styles.productName,
-                item.checked && styles.checkedText,
-              ]}
-            >
-              {item.name}
-            </Text>
-            <Text
-              style={[
-                styles.productCategory,
-                item.checked && styles.checkedText,
-              ]}
-            >
-              {item.category}
-            </Text>
-          </View>
+  const renderProduct = ({ item }) => (
+    <TouchableOpacity
+      style={[styles.productCard, item.checked && styles.checkedCard]}
+      onPress={() => toggleCheck(item.id)}
+    >
+      <View style={styles.productInfo}>
+        <View style={styles.checkbox}>
+          {item.checked && <View style={styles.checkboxTick} />}
         </View>
-      </TouchableOpacity>
-    );
-  };
 
+        <View style={{ flex: 1 }}>
+          <Text style={styles.productName}>{item.name}</Text>
+          <Text style={styles.productCategory}>
+            {item.serumType || item.category}
+          </Text>
+          {item.reason && <Text style={styles.reasonText}>{item.reason}</Text>}
+        </View>
+      </View>
+    </TouchableOpacity>
+  );
+
+  /* ---------------- UI ---------------- */
   return (
-    <View style={styles.container}>
-      {/* Routine type buttons */}
-      <View style={[styles.buttonsRow, { marginTop: insets.top + 10 }]}>
+    <View style={[styles.container, { paddingTop: insets.top }]}>
+      {/* MORNING / EVENING */}
+      <View style={styles.buttonsRow}>
         <TouchableOpacity
           style={[
             styles.routineButton,
@@ -118,27 +130,50 @@ export default function RoutineScreen() {
         </TouchableOpacity>
       </View>
 
-      {/* Routine products */}
+      {/* 7-DAY CALENDAR */}
+      <View style={styles.calendarRow}>
+        {weekDays.map(day => {
+          const active = isSameDay(day, selectedDate);
+
+          return (
+            <TouchableOpacity
+              key={day.toISOString()}
+              style={[styles.dayBox, active && styles.activeDayBox]}
+              onPress={() => setSelectedDate(day)}
+            >
+              <Text style={[styles.dayName, active && styles.activeDayText]}>
+                {day.toLocaleDateString("en-US", { weekday: "short" })}
+              </Text>
+              <Text style={[styles.dayNumber, active && styles.activeDayText]}>
+                {day.getDate()}
+              </Text>
+            </TouchableOpacity>
+          );
+        })}
+      </View>
+
+      {/* ROUTINE LIST */}
       <FlatList
-        data={displayedProducts}
+        data={routine}
         keyExtractor={(item) => item.id}
         contentContainerStyle={{
           padding: 15,
-          paddingBottom: insets.bottom + 80,
+          paddingBottom: insets.bottom + 90,
         }}
         renderItem={renderProduct}
         ListEmptyComponent={
           <Text style={{ textAlign: "center", marginTop: 50 }}>
-            No products in this routine
+            No routine for this day
           </Text>
         }
       />
 
-      {/* Shared Bottom Navigation */}
       <BottomNav />
     </View>
   );
 }
+
+/* ---------------- STYLES ---------------- */
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#f2f2f2" },
@@ -146,7 +181,7 @@ const styles = StyleSheet.create({
   buttonsRow: {
     flexDirection: "row",
     justifyContent: "center",
-    marginBottom: 10,
+    marginBottom: 8,
   },
 
   routineButton: {
@@ -166,6 +201,45 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     fontSize: 16,
   },
+
+  /* CALENDAR */
+
+  calendarRow: {
+    flexDirection: "row",
+    justifyContent: "space-around",
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderColor: "#ddd",
+    backgroundColor: "#f2f2f2",
+  },
+
+  dayBox: {
+    alignItems: "center",
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: 12,
+  },
+
+  activeDayBox: {
+    backgroundColor: "#333",
+  },
+
+  dayName: {
+    fontSize: 12,
+    color: "#777",
+  },
+
+  dayNumber: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#333",
+  },
+
+  activeDayText: {
+    color: "#fff",
+  },
+
+  /* PRODUCTS */
 
   productCard: {
     backgroundColor: "#fff",
@@ -200,12 +274,19 @@ const styles = StyleSheet.create({
     backgroundColor: "#333",
   },
 
-  productName: { fontSize: 16, fontWeight: "600" },
+  productName: {
+    fontSize: 16,
+    fontWeight: "600",
+  },
 
-  productCategory: { fontSize: 14, color: "#777" },
-
-  checkedText: {
+  productCategory: {
+    fontSize: 14,
     color: "#777",
-    textDecorationLine: "line-through",
+  },
+
+  reasonText: {
+    fontSize: 12,
+    color: "#999",
+    marginTop: 2,
   },
 });

@@ -10,7 +10,7 @@ import {
   ScrollView,
 } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { SafeAreaView } from "react-native-safe-area-context";
 import CameraScreen from "./camera";
 import { router } from "expo-router";
 
@@ -37,14 +37,12 @@ const serumTypes = [
 ];
 
 export default function NewProduct() {
-  const insets = useSafeAreaInsets();
-
   const [name, setName] = useState("");
   const [brand, setBrand] = useState("");
   const [ingredients, setIngredients] = useState("");
   const [category, setCategory] = useState("Cleanser");
   const [serumType, setSerumType] = useState("");
-  const [showSerumDropdown, setShowSerumDropdown] = useState(false);
+  const [showSerumModal, setShowSerumModal] = useState(false);
   const [imageUri, setImageUri] = useState(null);
   const [showCamera, setShowCamera] = useState(false);
 
@@ -71,12 +69,9 @@ export default function NewProduct() {
   };
 
   return (
-    <View style={{ flex: 1, backgroundColor: "#f2f2f2" }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: "#f2f2f2" }}>
       <ScrollView
-        contentContainerStyle={[
-          styles.scrollContent,
-          { paddingBottom: insets.bottom + 120 },
-        ]}
+        contentContainerStyle={styles.scrollContent}
         keyboardShouldPersistTaps="handled"
       >
         {/* IMAGE */}
@@ -122,7 +117,6 @@ export default function NewProduct() {
               key={c}
               onPress={() => {
                 setCategory(c);
-                setShowSerumDropdown(false);
                 if (c !== "Serum / Active Ingredients") setSerumType("");
               }}
             >
@@ -138,42 +132,21 @@ export default function NewProduct() {
           ))}
         </View>
 
-        {/* SERUM SELECT (INPUT-STYLE BOX) */}
+        {/* SERUM SELECT */}
         {category === "Serum / Active Ingredients" && (
-          <View style={{ marginBottom: 30 }}>
-            <TouchableOpacity
-              style={styles.selectBox}
-              onPress={() => setShowSerumDropdown(!showSerumDropdown)}
-              activeOpacity={0.85}
+          <TouchableOpacity
+            style={styles.selectBox}
+            onPress={() => setShowSerumModal(true)}
+          >
+            <Text
+              style={[
+                styles.selectText,
+                !serumType && { color: "#999" },
+              ]}
             >
-              <Text
-                style={[
-                  styles.selectText,
-                  !serumType && { color: "#999" },
-                ]}
-              >
-                {serumType || "Select active ingredient"}
-              </Text>
-            </TouchableOpacity>
-
-            {/* DROPDOWN OVERLAY */}
-            {showSerumDropdown && (
-              <View style={styles.dropdownOverlay}>
-                {serumTypes.map((type) => (
-                  <TouchableOpacity
-                    key={type}
-                    style={styles.dropdownItem}
-                    onPress={() => {
-                      setSerumType(type);
-                      setShowSerumDropdown(false);
-                    }}
-                  >
-                    <Text style={styles.dropdownItemText}>{type}</Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-            )}
-          </View>
+              {serumType || "Select active ingredient"}
+            </Text>
+          </TouchableOpacity>
         )}
 
         {/* SAVE */}
@@ -181,6 +154,34 @@ export default function NewProduct() {
           <Text style={styles.saveText}>Save Product</Text>
         </TouchableOpacity>
       </ScrollView>
+
+      {/* SERUM MODAL */}
+      <Modal
+        visible={showSerumModal}
+        animationType="slide"
+        transparent
+      >
+        <TouchableOpacity
+          style={styles.modalBackdrop}
+          activeOpacity={1}
+          onPress={() => setShowSerumModal(false)}
+        >
+          <View style={styles.modalContent}>
+            {serumTypes.map((type) => (
+              <TouchableOpacity
+                key={type}
+                style={styles.dropdownItem}
+                onPress={() => {
+                  setSerumType(type);
+                  setShowSerumModal(false);
+                }}
+              >
+                <Text style={styles.dropdownItemText}>{type}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </TouchableOpacity>
+      </Modal>
 
       {/* CAMERA */}
       <Modal visible={showCamera} animationType="slide">
@@ -192,7 +193,7 @@ export default function NewProduct() {
           onCancel={() => setShowCamera(false)}
         />
       </Modal>
-    </View>
+    </SafeAreaView>
   );
 }
 
@@ -200,8 +201,8 @@ export default function NewProduct() {
 
 const styles = StyleSheet.create({
   scrollContent: {
-    paddingTop: 20,
-    paddingHorizontal: 20,
+    padding: 20,
+    paddingBottom: 120,
   },
 
   image: {
@@ -237,7 +238,7 @@ const styles = StyleSheet.create({
   categoryRow: {
     flexDirection: "row",
     flexWrap: "wrap",
-    marginBottom: 10,
+    marginBottom: 15,
   },
 
   category: {
@@ -254,7 +255,6 @@ const styles = StyleSheet.create({
     color: "#fff",
   },
 
-  /* SELECT BOX */
   selectBox: {
     backgroundColor: "#fff",
     borderRadius: 15,
@@ -262,6 +262,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     borderWidth: 1,
     borderColor: "#ddd",
+    marginBottom: 20,
   },
 
   selectText: {
@@ -269,42 +270,43 @@ const styles = StyleSheet.create({
     color: "#333",
   },
 
-  /* DROPDOWN */
-  dropdownOverlay: {
-    position: "absolute",
-    top: 55,
-    left: 0,
-    right: 0,
-    backgroundColor: "#fff",
-    borderRadius: 15,
-    borderWidth: 1,
-    borderColor: "#ddd",
-    zIndex: 999,
-  },
-
-  dropdownItem: {
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: "#eee",
-  },
-
-  dropdownItemText: {
-    fontSize: 16,
-    color: "#333",
-  },
-
   saveButton: {
-    marginTop: 10,
     backgroundColor: "#3f3f3f",
     paddingVertical: 16,
     borderRadius: 20,
     alignItems: "center",
+    marginTop: 10,
   },
 
   saveText: {
     color: "#fff",
     fontSize: 18,
     fontWeight: "600",
+  },
+
+  /* MODAL */
+
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.4)",
+    justifyContent: "flex-end",
+  },
+
+  modalContent: {
+    backgroundColor: "#fff",
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    paddingBottom: 30,
+  },
+
+  dropdownItem: {
+    paddingVertical: 16,
+    paddingHorizontal: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: "#eee",
+  },
+
+  dropdownItemText: {
+    fontSize: 16,
   },
 });
