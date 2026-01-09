@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { router } from "expo-router";
 import {
   StyleSheet,
@@ -11,18 +11,19 @@ import {
 } from "react-native";
 import { BlurView } from "expo-blur";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import loginbg from "../assets/bg/img3.jpg";
+import loginbg from "../assets/bg/betterskin_bg2.jpg";
+import { supabase } from "../lib/supabase";
 
 /* ---------------- QUESTIONS ---------------- */
-
 const questions = [
   {
     question: "What is your skin type?",
-    options: ["Oily", "Dry", "Combination", "Normal", "Sensitive", "I don’t know"],
+    options: ["Oily", "Dry", "Combination", "Normal", "Sensitive", "I don't know"],
     multi: false,
   },
   {
-    question: "What skin concerns are you currently experiencing? (Select all that apply)",
+    question:
+      "What skin concerns are you currently experiencing? (Select all that apply)",
     options: [
       "Acne",
       "Dryness",
@@ -37,44 +38,23 @@ const questions = [
   },
   {
     question: "Have you ever been diagnosed with any of the following skin conditions?",
-    options: [
-      "Rosacea",
-      "Eczema",
-      "Cystic acne",
-      "Melasma",
-      "None",
-      "Not sure",
-      "Other (please specify)",
-    ],
+    options: ["Rosacea", "Eczema", "Cystic acne", "Melasma", "None", "Not sure", "Other (please specify)"],
     multi: true,
     allowOther: true,
   },
   {
     question: "Do you have any known skincare ingredients that irritate your skin?",
-    options: [
-      "Fragrance",
-      "Essential oils",
-      "Alcohol",
-      "None",
-      "Other (please specify)",
-    ],
+    options: ["Fragrance", "Essential oils", "Alcohol", "None", "Other (please specify)"],
     multi: true,
     allowOther: true,
   },
   {
     question: "Do any health factors currently affect your skin?",
-    options: [
-      "Hormonal changes",
-      "Allergies",
-      "Stress-related",
-      "None",
-      "Unsure",
-      "Prefer not to say",
-    ],
+    options: ["Hormonal changes", "Allergies", "Stress-related", "None", "Unsure", "Prefer not to say"],
     multi: true,
   },
   {
-    question: "What’s your main skincare goal right now?",
+    question: "What's your main skincare goal right now?",
     options: [
       "Clear acne",
       "Anti-aging",
@@ -90,40 +70,39 @@ const questions = [
   },
   {
     question: "What kind of skincare products do you prefer?",
-    options: ["Natural", "Dermatologist-driven & clinical", "Doesn’t matter"],
+    options: ["Natural", "Dermatologist-driven & clinical", "Doesn't matter"],
     multi: false,
   },
   {
     question: "What price range are you most comfortable to spend for a single product?",
-    options: [
-      "Budget friendly ($0–50)",
-      "Medium range ($50–100)",
-      "Premium ($100+)",
-    ],
+    options: ["Budget friendly ($0-50)", "Medium range ($50-100)", "Premium ($100+)"],
     multi: false,
   },
 ];
 
 /* ---------------- SCREEN ---------------- */
-
 export default function QuizScreen() {
+  const [userId, setUserId] = useState(null);
   const [current, setCurrent] = useState(0);
   const [selected, setSelected] = useState([]);
   const [answers, setAnswers] = useState([]);
-
-  // 👇 PARALLEL ARRAY FOR "OTHER" ANSWERS
-  const [otherAnswers, setOtherAnswers] = useState(
-    Array(questions.length).fill("")
-  );
+  const [otherAnswers, setOtherAnswers] = useState(Array(questions.length).fill(""));
 
   const question = questions[current];
+
+  // load current user
+  useEffect(() => {
+    const loadUser = async () => {
+      const { data } = await supabase.auth.getUser();
+      setUserId(data.user.id);
+    };
+    loadUser();
+  }, []);
 
   const toggleOption = (option) => {
     if (question.multi) {
       setSelected((prev) =>
-        prev.includes(option)
-          ? prev.filter((o) => o !== option)
-          : [...prev, option]
+        prev.includes(option) ? prev.filter((o) => o !== option) : [...prev, option]
       );
     } else {
       setSelected([option]);
@@ -138,20 +117,19 @@ export default function QuizScreen() {
     if (current + 1 < questions.length) {
       setCurrent(current + 1);
     } else {
-      await AsyncStorage.setItem("onboardingComplete", "true");
-      await AsyncStorage.setItem("surveyAnswers", JSON.stringify(updatedAnswers));
-      await AsyncStorage.setItem(
-        "surveyOtherAnswers",
-        JSON.stringify(otherAnswers)
-      );
+      if (!userId) return; // safety check
+
+      // Save answers per user
+      await AsyncStorage.setItem(`onboardingComplete:${userId}`, "true");
+      await AsyncStorage.setItem(`surveyAnswers:${userId}`, JSON.stringify(updatedAnswers));
+      await AsyncStorage.setItem(`surveyOtherAnswers:${userId}`, JSON.stringify(otherAnswers));
+
       router.replace("/profile");
     }
   };
 
   const isOtherSelected = selected.includes("Other (please specify)");
-  const isNextDisabled =
-    selected.length === 0 ||
-    (isOtherSelected && otherAnswers[current].trim() === "");
+  const isNextDisabled = selected.length === 0 || (isOtherSelected && otherAnswers[current].trim() === "");
 
   return (
     <ImageBackground source={loginbg} style={styles.background}>
@@ -166,19 +144,13 @@ export default function QuizScreen() {
             return (
               <View key={idx} style={{ width: "100%" }}>
                 <TouchableOpacity
-                  style={[
-                    styles.optionButton,
-                    isSelected && styles.optionSelected,
-                  ]}
+                  style={[styles.optionButton, isSelected && styles.optionSelected]}
                   onPress={() => toggleOption(opt)}
                 >
-                  <View style={styles.checkbox}>
-                    {isSelected && <View style={styles.checkboxInner} />}
-                  </View>
+                  <View style={styles.checkbox}>{isSelected && <View style={styles.checkboxInner} />}</View>
                   <Text style={styles.optionText}>{opt}</Text>
                 </TouchableOpacity>
 
-                {/* ✅ OTHER INPUT */}
                 {isOther && isSelected && (
                   <TextInput
                     style={styles.otherInput}
@@ -216,89 +188,18 @@ export default function QuizScreen() {
 }
 
 /* ---------------- STYLES ---------------- */
-
 const styles = StyleSheet.create({
   background: { flex: 1 },
-  wrapper: {
-    flexGrow: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    paddingVertical: 40,
-  },
-  container: {
-    width: "90%",
-    padding: 25,
-    borderRadius: 20,
-    backgroundColor: "rgba(231,231,231,0.85)",
-    alignItems: "center",
-  },
-  question: {
-    fontSize: 22,
-    fontWeight: "bold",
-    marginBottom: 20,
-    textAlign: "center",
-    color: "#3f3f3f",
-  },
-  optionButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    padding: 12,
-    borderRadius: 20,
-    marginBottom: 15,
-    width: "100%",
-    borderWidth: 1,
-    borderColor: "#838383",
-    backgroundColor: "#a7a7a7a9",
-  },
-  optionSelected: {
-    backgroundColor: "#d0d0d0",
-    borderColor: "#3f3f3f",
-  },
-  checkbox: {
-    width: 22,
-    height: 22,
-    borderRadius: 6,
-    borderWidth: 2,
-    borderColor: "#666",
-    marginRight: 12,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  checkboxInner: {
-    width: 12,
-    height: 12,
-    borderRadius: 3,
-    backgroundColor: "#3f3f3f",
-  },
-  optionText: {
-    fontSize: 16,
-    color: "#3f3f3f",
-  },
-  otherInput: {
-    width: "100%",
-    padding: 10,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: "#999",
-    backgroundColor: "#fff",
-    marginBottom: 15,
-    marginTop: -5,
-  },
-  nextButton: {
-    marginTop: 10,
-    backgroundColor: "#3f3f3f",
-    paddingVertical: 12,
-    paddingHorizontal: 40,
-    borderRadius: 25,
-  },
-  nextText: {
-    color: "#fff",
-    fontSize: 18,
-    fontWeight: "600",
-  },
-  progress: {
-    marginTop: 10,
-    fontSize: 14,
-    color: "#3f3f3f",
-  },
+  wrapper: { flexGrow: 1, justifyContent: "center", alignItems: "center", paddingVertical: 40 },
+  container: { width: "90%", padding: 25, borderRadius: 20, backgroundColor: "#f5efe6ff", backgroundOpacity: 0.9, alignItems: "center" },
+  question: { fontSize: 22, fontWeight: "bold", marginBottom: 20, textAlign: "center", color: "#3f3f3f" },
+  optionButton: { flexDirection: "row", alignItems: "center", padding: 12, borderRadius: 20, marginBottom: 15, width: "100%", borderWidth: 1, borderColor: "#838383", backgroundColor: "#d7cab8" },
+  optionSelected: { backgroundColor: "#d0d0d0", borderColor: "#3f3f3f" },
+  checkbox: { width: 22, height: 22, borderRadius: 6, borderWidth: 2, borderColor: "#666", marginRight: 12, justifyContent: "center", alignItems: "center" },
+  checkboxInner: { width: 12, height: 12, borderRadius: 3, backgroundColor: "#3f3f3f" },
+  optionText: { fontSize: 16, color: "#3f3f3f" },
+  otherInput: { width: "100%", padding: 10, borderRadius: 12, borderWidth: 1, borderColor: "#999", backgroundColor: "#fff", marginBottom: 15, marginTop: -5 },
+  nextButton: { marginTop: 10, backgroundColor: "#a98f7e", paddingVertical: 12, paddingHorizontal: 40, borderRadius: 25 },
+  nextText: { color: "#fff", fontSize: 18, fontWeight: "600" },
+  progress: { marginTop: 10, fontSize: 14, color: "#3f3f3f" },
 });

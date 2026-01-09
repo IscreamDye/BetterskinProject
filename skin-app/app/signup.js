@@ -14,7 +14,7 @@ import {
 
 
 import { BlurView } from "expo-blur";
-import loginbg from "../assets/bg/img2.jpg";
+import loginbg from "../assets/bg/betterskin_bg2.jpg";
 import { supabase } from "../lib/supabase";
 
 
@@ -162,7 +162,8 @@ const styles = StyleSheet.create({
     width: "90%",
     padding: 20,
     borderRadius: 20,
-    backgroundColor: "rgba(231, 231, 231, 0.81)",
+    backgroundColor: "#f5efe6ff", // semi-transparent for glass
+    opacity: 0.9,
     overflow: "hidden",
   },
   title_s: {
@@ -175,7 +176,7 @@ const styles = StyleSheet.create({
     padding: 12,
     marginBottom: 20,
     borderRadius: 20,
-    color: "#333",
+    color: "#a98f7e",
   },
   headerRow: {
     flexDirection: "row",
@@ -183,14 +184,15 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   nextButton: {
-    backgroundColor: "#6d6d6d",
+    backgroundColor: "#8a8076",
     paddingVertical: 14,
     borderRadius: 20,
     alignItems: "center",
   },
   nextButtonText: {
-    color: "#000",
+    color: "#f5efe6ff",
     fontWeight: "bold",
     fontSize: 16,
   },
 });
+

@@ -16,7 +16,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useEffect, useState } from "react";
 import * as Location from "expo-location";
 import { router } from "expo-router";
-import loginbg from "../assets/bg/img3.jpg";
+import loginbg from "../assets/bg/betterskin_bg2.jpg";
 import { supabase } from "../lib/supabase";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
@@ -203,9 +203,6 @@ const fetchUVData = async () => {
                   )}
                 </View>
 
-
-
-          {/* GREETING */}
           {/* GREETING */}
             {!userLoading && (
               <View style={styles.greetingBox}>
@@ -248,34 +245,75 @@ const fetchUVData = async () => {
           )}
         </ScrollView>
 
-        {/* MODAL */}
-        <Modal visible={!!selectedProduct} transparent animationType="slide">
-          <View style={styles.modalWrapper}>
-            <View style={styles.modalContent}>
-              {selectedProduct && (
-                <>
-                  <Text style={styles.modalHeader}>{selectedProduct.name}</Text>
-                  <Image source={selectedProduct.photo} style={styles.productImageLarge} />
-                  <Text>${selectedProduct.price.toFixed(2)}</Text>
+      <Modal visible={!!selectedProduct} transparent animationType="slide">
+        <View style={styles.modalWrapper}>
+          <View style={styles.modalContent}>
+            {selectedProduct && (
+              <>
+                <Text style={styles.modalHeader}>{selectedProduct.name}</Text>
+                <Image source={selectedProduct.photo} style={styles.productImageLarge} />
+                <Text style={{ marginVertical: 6, fontWeight: "600" }}>
+                  Price: ${selectedProduct.price.toFixed(2)}
+                </Text>
+                <Text style={{ marginBottom: 10 }}>{selectedProduct.description}</Text>
 
-                  <TextInput
-                    style={styles.input}
-                    value={checkout.name}
-                    onChangeText={v => updateField("name", v)}
-                  />
+                {/* ---------------- USER INFO ---------------- */}
+                <TextInput
+                  style={styles.input}
+                  value={checkout.name}
+                  placeholder="Full Name"
+                  onChangeText={v => updateField("name", v)}
+                />
+                <TextInput
+                  style={styles.input}
+                  value={checkout.email}
+                  placeholder="Email"
+                  keyboardType="email-address"
+                  onChangeText={v => updateField("email", v)}
+                />
+                <TextInput
+                  style={styles.input}
+                  value={checkout.address}
+                  placeholder="Address"
+                  onChangeText={v => updateField("address", v)}
+                />
 
-                  <TouchableOpacity style={styles.buyButton} onPress={handleBuy}>
-                    <Text style={styles.buyText}>Place Order</Text>
-                  </TouchableOpacity>
+                {/* ---------------- PAYMENT (OPTIONAL) ---------------- */}
+                <TextInput
+                  style={styles.input}
+                  value={checkout.cardNumber || ""}
+                  placeholder="Card Number"
+                  keyboardType="number-pad"
+                  onChangeText={v => updateField("cardNumber", v)}
+                />
+                <TextInput
+                  style={styles.input}
+                  value={checkout.expiry || ""}
+                  placeholder="Expiry (MM/YY)"
+                  onChangeText={v => updateField("expiry", v)}
+                />
+                <TextInput
+                  style={styles.input}
+                  value={checkout.cvv || ""}
+                  placeholder="CVV"
+                  keyboardType="number-pad"
+                  onChangeText={v => updateField("cvv", v)}
+                />
 
-                  <TouchableOpacity onPress={() => setSelectedProduct(null)}>
-                    <Text style={styles.closeText}>Cancel</Text>
-                  </TouchableOpacity>
-                </>
-              )}
-            </View>
+                {/* ---------------- PLACE ORDER ---------------- */}
+                <TouchableOpacity style={styles.buyButton} onPress={handleBuy}>
+                  <Text style={styles.buyText}>Place Order</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity onPress={() => setSelectedProduct(null)}>
+                  <Text style={styles.closeText}>Cancel</Text>
+                </TouchableOpacity>
+              </>
+            )}
           </View>
-        </Modal>
+        </View>
+      </Modal>
+
 
         <BottomNav />
       </View>
@@ -295,7 +333,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
   },
   headerTitle: { fontSize: 24, fontWeight: "600" },
-  logoutButton: { backgroundColor: "#ff4d4d", padding: 6, borderRadius: 10 },
+  logoutButton: { backgroundColor: "#a98f7e", padding: 6, borderRadius: 10 },
   logoutText: { color: "#fff" },
 
   contentContainer: { alignItems: "center", padding: 16 },
@@ -371,3 +409,4 @@ const styles = StyleSheet.create({
   buyText: { color: "#fff", fontWeight: "600" },
   closeText: { textAlign: "center", marginTop: 10 },
 });
+

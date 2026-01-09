@@ -292,7 +292,7 @@ const styles = StyleSheet.create({
   },
 
   activeCategory: {
-    backgroundColor: "#333",
+    backgroundColor: "#877d73",
     color: "#fff",
   },
 
@@ -312,7 +312,7 @@ const styles = StyleSheet.create({
   },
 
   saveButton: {
-    backgroundColor: "#3f3f3f",
+    backgroundColor: "#877d73",
     paddingVertical: 16,
     borderRadius: 20,
     alignItems: "center",

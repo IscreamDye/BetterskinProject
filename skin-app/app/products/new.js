@@ -206,7 +206,7 @@ const styles = StyleSheet.create({
   },
 
   image: {
-    height: 220,
+    height: 280,
     borderRadius: 20,
     backgroundColor: "#ddd",
     justifyContent: "center",
@@ -251,7 +251,7 @@ const styles = StyleSheet.create({
   },
 
   activeCategory: {
-    backgroundColor: "#333",
+    backgroundColor: "#877d73",
     color: "#fff",
   },
 
@@ -271,7 +271,7 @@ const styles = StyleSheet.create({
   },
 
   saveButton: {
-    backgroundColor: "#3f3f3f",
+    backgroundColor: "#877d73",
     paddingVertical: 16,
     borderRadius: 20,
     alignItems: "center",
@@ -310,3 +310,4 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
 });
+

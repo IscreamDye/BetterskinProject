@@ -324,7 +324,7 @@ const styles = StyleSheet.create({
   },
 
   activeButton: {
-    backgroundColor: "#333",
+    backgroundColor: "#877d73",
   },
 
   buttonText: {
@@ -351,7 +351,7 @@ const styles = StyleSheet.create({
   },
 
   activeDayBox: {
-    backgroundColor: "#333",
+    backgroundColor: "#877d73",
   },
 
   dayName: {
@@ -423,7 +423,7 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     paddingHorizontal: 25,
     borderRadius: 20,
-    backgroundColor: "#ff4d4d",
+    backgroundColor: "#a98f7e",
   },
   resetButtonText: {
     color: "#fff",

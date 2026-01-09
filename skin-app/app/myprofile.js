@@ -11,7 +11,7 @@ import {
 } from "react-native";
 import { BlurView } from "expo-blur";
 import { supabase } from "../lib/supabase";
-import loginbg from "../assets/bg/img3.jpg";
+import loginbg from "../assets/bg/betterskin_bg2.jpg";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import BottomNav from "./BottomNav";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -304,7 +304,7 @@ const styles = StyleSheet.create({
     width: "90%",
     padding: 25,
     borderRadius: 20,
-    backgroundColor: "rgba(231,231,231,0.81)",
+    //backgroundColor: "#d7cab8ff",
     alignItems: "center",
   },
   header: {
