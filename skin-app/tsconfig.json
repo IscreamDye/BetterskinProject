@@ -11,7 +11,10 @@
   "include": [
     "**/*.ts",
     "**/*.tsx",
+    "app/quiz.js",
+    "app/_layout.js",
+    "app/index.js",
     ".expo/types/**/*.ts",
     "expo-env.d.ts"
-, "app/quiz.js", "app/_layout.js", "app/index.js"  ]
+  ]
 }

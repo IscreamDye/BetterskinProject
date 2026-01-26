@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo } from "react";
+import { useState, useCallback, useMemo, useEffect } from "react";
 import {
   Text,
   StyleSheet,
@@ -12,6 +12,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { router, useFocusEffect } from "expo-router";
 import BottomNav from "./BottomNav";
+import { supabase } from "../lib/supabase";
 
 const CATEGORY_ORDER = [
   "Cleanser",
@@ -26,6 +27,15 @@ const CATEGORY_ORDER = [
 export default function MyProducts() {
   const [products, setProducts] = useState([]);
   const insets = useSafeAreaInsets();
+
+  /* ---------------- AUTH GUARD ---------------- */
+  useEffect(() => {
+    const checkAuth = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) router.replace("/");
+    };
+    checkAuth();
+  }, []);
 
   const loadProducts = useCallback(async () => {
     const stored = await AsyncStorage.getItem("products");

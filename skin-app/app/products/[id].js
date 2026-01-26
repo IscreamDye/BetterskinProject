@@ -19,9 +19,9 @@ const categories = [
   "Toner",
   "Serum / Active Ingredients",
   "Moisturizer",
-  "Sunscreen",
   "Eye cream",
   "Exfoliant",
+  "Sunscreen",
 ];
 
 const serumTypes = [

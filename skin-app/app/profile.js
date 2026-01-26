@@ -18,13 +18,23 @@ import * as Location from "expo-location";
 import { router } from "expo-router";
 import loginbg from "../assets/bg/betterskin_bg2.jpg";
 import { supabase } from "../lib/supabase";
-import AsyncStorage from "@react-native-async-storage/async-storage";
+import { signOut } from "../lib/authHelpers";
 
 export default function DashboardScreen() {
   const insets = useSafeAreaInsets();
 
   const [uvData, setUvData] = useState(null);
   const [loading, setLoading] = useState(true);
+
+  /* ---------------- AUTH GUARD ---------------- */
+  useEffect(() => {
+    const checkAuth = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) router.replace("/");
+    };
+    checkAuth();
+  }, []);
+
 
   /* ---------------- USER ---------------- */
   const [userName, setUserName] = useState("there");
@@ -48,67 +58,106 @@ export default function DashboardScreen() {
     setCheckout(prev => ({ ...prev, [key]: value }));
 
   /* ---------------- PRODUCTS ---------------- */
-  const products = [
-    {
-      name: "Acne Control Serum",
-      photo: require("../assets/images/serum.jpg"),
-      category: "Acne",
-      price: 45,
-      description: "Targets breakouts and reduces inflammation.",
-    },
-    {
-      name: "Anti-Dryness Serum",
-      photo: require("../assets/images/serum.jpg"),
-      category: "Dryness",
-      price: 45,
-      description: "Deep hydration for dry skin.",
-    },
-    {
-      name: "Brightening Serum",
-      photo: require("../assets/images/serum.jpg"),
-      category: "Dark spots",
-      price: 52,
-      description: "Fades dark spots and improves skin tone.",
-    },
-  ];
+  const [products, setProducts] = useState([]);
+  const [productsLoading, setProductsLoading] = useState(true);
 
-  /* ---------------- LOAD USER NAME ---------------- */
-useEffect(() => {
-  const fetchUser = async () => {
-    setUserLoading(true);
-    const { data } = await supabase.auth.getUser();
-    if (!data?.user) {
-      setUserName("there");
-      setUserLoading(false);
-      return;
-    }
-
-    const meta = data.user.user_metadata || {};
-    const name =
-      meta.first_name ||
-      meta.full_name?.split(" ")[0] ||
-      meta.name ||
-      data.user.email?.split("@")[0] ||
-      "there";
-
-    setUserName(name);
-    setUserLoading(false);
-  };
-
-  fetchUser();
-}, []);
-
-
-  /* ---------------- LOAD QUIZ ---------------- */
+  /* ---------------- LOAD PRODUCTS BASED ON USER'S SKIN CONCERNS ---------------- */
   useEffect(() => {
-    const loadQuiz = async () => {
-      const stored = await AsyncStorage.getItem("surveyAnswers");
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        setSkinConcerns(parsed[1] || []);
+    const fetchProducts = async () => {
+      setProductsLoading(true);
+      try {
+        // Only fetch products after we have skin concerns
+        let query = supabase.from('recomandedProducts').select('*');
+        
+        // If user has skin concerns, filter by SkinGoal
+        if (skinConcerns.length > 0) {
+          query = query.in('SkinGoal', skinConcerns);
+        }
+
+        const { data, error } = await query;
+
+        if (error) {
+          console.error('Error fetching products:', error);
+          setProducts([]);
+        } else {
+          // Map database columns to expected format
+          const mappedProducts = (data || []).map(item => ({
+            id: item.id,
+            name: item.Name,
+            photo: { uri: item.Img },
+            skinGoal: item.SkinGoal,  // This matches user's skin concerns
+            price: item.Price,
+            category: item.Category,
+          }));
+          setProducts(mappedProducts);
+        }
+      } catch (err) {
+        console.error('Error loading products:', err);
+        setProducts([]);
+      } finally {
+        setProductsLoading(false);
       }
     };
-    loadQuiz();
+
+    fetchProducts();
+  }, [skinConcerns]); // Re-fetch when skin concerns change
+
+  /* ---------------- LOAD USER NAME ---------------- */
+  useEffect(() => {
+    const fetchUser = async () => {
+      setUserLoading(true);
+      const { data } = await supabase.auth.getUser();
+      if (!data?.user) {
+        setUserName("there");
+        setUserLoading(false);
+        return;
+      }
+
+      const meta = data.user.user_metadata || {};
+      const name =
+        meta.first_name ||
+        meta.full_name?.split(" ")[0] ||
+        meta.name ||
+        data.user.email?.split("@")[0] ||
+        "there";
+
+      setUserName(name);
+      setUserLoading(false);
+    };
+
+    fetchUser();
+  }, []);
+
+  /* ---------------- LOAD QUIZ FROM SUPABASE ---------------- */
+  useEffect(() => {
+    const loadQuizFromSupabase = async () => {
+      try {
+        const { data: authData } = await supabase.auth.getUser();
+        if (!authData?.user) return;
+
+        const { data: profile, error } = await supabase
+          .from('profiles')
+          .select('quiz_answers')
+          .eq('id', authData.user.id)
+          .single();
+
+        if (error) {
+          console.error("Error loading quiz answers:", error);
+          return;
+        }
+
+        if (profile?.quiz_answers && profile.quiz_answers.length > 1) {
+          // quiz_answers[1] contains skin concerns (question index 1)
+          const concerns = profile.quiz_answers[1] || [];
+          console.log("Loaded skin concerns from Supabase:", concerns);
+          setSkinConcerns(concerns);
+        }
+      } catch (e) {
+        console.error("Failed to load quiz data from Supabase", e);
+      }
+    };
+
+    loadQuizFromSupabase();
   }, []);
 
   /* ---------------- UV ---------------- */
@@ -161,9 +210,7 @@ const fetchUVData = async () => {
 
     Alert.alert(
       "Order placed 🎉",
-      `Thank you ${checkout.name}!\n\n${selectedProduct.name}\n$${selectedProduct.price.toFixed(
-        2
-      )}`
+      `Thank you ${checkout.name}!\n\n${selectedProduct.name}\n€${Number(selectedProduct.price || 0).toFixed(2)}`
     );
 
     setSelectedProduct(null);
@@ -178,10 +225,7 @@ const fetchUVData = async () => {
           <Text style={styles.headerTitle}>BETTERSKIN</Text>
           <TouchableOpacity
             style={styles.logoutButton}
-            onPress={async () => {
-              await supabase.auth.signOut();
-              router.replace("/");
-            }}
+            onPress={signOut}
           >
             <Text style={styles.logoutText}>Logout</Text>
           </TouchableOpacity>
@@ -208,10 +252,10 @@ const fetchUVData = async () => {
               <View style={styles.greetingBox}>
                 <Text style={styles.greetingTitle}>Hi {userName}! ☀️</Text>
                 <Text style={styles.greetingText}>
-                  Today's UV is high -- SPF is essential!
+                  Today`s UV is high -- SPF is essential!
                 </Text>
                 <Text style={styles.greetingText}>
-                   We noticed you skipped Vitamin C yesterday, so we've adjusted today's routine to keep you on track.
+                   We noticed you skipped Vitamin C yesterday, so we`ve adjusted today`s routine to keep you on track.
                 </Text>
                 <Text style={styles.greetingFooter}>Have a great day!</Text>
               </View>
@@ -219,30 +263,46 @@ const fetchUVData = async () => {
 
 
           {/* RECOMMENDATIONS */}
-          {skinConcerns.length > 0 && (
-            <View style={styles.recommendBox}>
-              <Text style={styles.recommendTitle}>
-                Recommended products for:
+          <View style={styles.recommendBox}>
+            <Text style={styles.sectionTitle}>Recommended Products</Text>
+            
+            {skinConcerns.length > 0 ? (
+              <Text style={styles.concernsText}>
+                For your skin concerns: {skinConcerns.join(", ")}
               </Text>
-              <Text>{skinConcerns.join(", ")}</Text>
+            ) : (
+              <Text style={styles.concernsText}>
+                Complete the quiz to get personalized recommendations
+              </Text>
+            )}
 
-              {products
-                .filter(p => skinConcerns.includes(p.category))
-                .map((p, i) => (
-                  <TouchableOpacity
-                    key={i}
-                    style={styles.productRow}
-                    onPress={() => setSelectedProduct(p)}
-                  >
-                    <Image source={p.photo} style={styles.productImage} />
-                    <View style={styles.productInfo}>
-                      <Text style={styles.productName}>{p.name}</Text>
-                      <Text>${p.price.toFixed(2)}</Text>
-                    </View>
-                  </TouchableOpacity>
-                ))}
-            </View>
-          )}
+            {productsLoading ? (
+              <ActivityIndicator style={{ marginTop: 15 }} />
+            ) : products.length === 0 ? (
+              <View style={styles.noProductsBox}>
+                <Text style={styles.noProductsText}>
+                  {skinConcerns.length > 0 
+                    ? "No products found for your skin concerns" 
+                    : "No products available"}
+                </Text>
+              </View>
+            ) : (
+              products.map((p, i) => (
+                <TouchableOpacity
+                  key={p.id || i}
+                  style={styles.productRow}
+                  onPress={() => setSelectedProduct(p)}
+                >
+                  <Image source={p.photo} style={styles.productImage} />
+                  <View style={styles.productInfo}>
+                    <Text style={styles.productName}>{p.name}</Text>
+                    <Text style={styles.productSkinGoal}>For: {p.skinGoal}</Text>
+                    <Text style={styles.productPrice}>€{Number(p.price || 0).toFixed(2)}</Text>
+                  </View>
+                </TouchableOpacity>
+              ))
+            )}
+          </View>
         </ScrollView>
 
       <Modal visible={!!selectedProduct} transparent animationType="slide">
@@ -252,10 +312,13 @@ const fetchUVData = async () => {
               <>
                 <Text style={styles.modalHeader}>{selectedProduct.name}</Text>
                 <Image source={selectedProduct.photo} style={styles.productImageLarge} />
-                <Text style={{ marginVertical: 6, fontWeight: "600" }}>
-                  Price: ${selectedProduct.price.toFixed(2)}
+                <Text style={styles.modalSkinGoal}>For: {selectedProduct.skinGoal}</Text>
+                <Text style={styles.modalPrice}>
+                  €{Number(selectedProduct.price || 0).toFixed(2)}
                 </Text>
-                <Text style={{ marginBottom: 10 }}>{selectedProduct.description}</Text>
+                {selectedProduct.category && (
+                  <Text style={styles.modalCategory}>{selectedProduct.category}</Text>
+                )}
 
                 {/* ---------------- USER INFO ---------------- */}
                 <TextInput
@@ -278,29 +341,8 @@ const fetchUVData = async () => {
                   onChangeText={v => updateField("address", v)}
                 />
 
-                {/* ---------------- PAYMENT (OPTIONAL) ---------------- */}
-                <TextInput
-                  style={styles.input}
-                  value={checkout.cardNumber || ""}
-                  placeholder="Card Number"
-                  keyboardType="number-pad"
-                  onChangeText={v => updateField("cardNumber", v)}
-                />
-                <TextInput
-                  style={styles.input}
-                  value={checkout.expiry || ""}
-                  placeholder="Expiry (MM/YY)"
-                  onChangeText={v => updateField("expiry", v)}
-                />
-                <TextInput
-                  style={styles.input}
-                  value={checkout.cvv || ""}
-                  placeholder="CVV"
-                  keyboardType="number-pad"
-                  onChangeText={v => updateField("cvv", v)}
-                />
-
                 {/* ---------------- PLACE ORDER ---------------- */}
+                {/* Note: Payment processing should be handled via Stripe or similar */}
                 <TouchableOpacity style={styles.buyButton} onPress={handleBuy}>
                   <Text style={styles.buyText}>Place Order</Text>
                 </TouchableOpacity>
@@ -336,7 +378,7 @@ const styles = StyleSheet.create({
   logoutButton: { backgroundColor: "#a98f7e", padding: 6, borderRadius: 10 },
   logoutText: { color: "#fff" },
 
-  contentContainer: { alignItems: "center", padding: 16 },
+  contentContainer: { alignItems: "center", padding: 16, paddingBottom: 100 },
 
   uvCard: {
     width: "90%",
@@ -362,17 +404,36 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(255,255,255,0.9)",
     borderRadius: 20,
     padding: 16,
+    marginBottom: 20,
+  },
+  concernsText: {
+    fontSize: 13,
+    color: "#666",
+    marginBottom: 10,
+    fontStyle: "italic",
+  },
+  noProductsBox: {
+    padding: 20,
+    alignItems: "center",
+  },
+  noProductsText: {
+    fontSize: 14,
+    color: "#888",
+    textAlign: "center",
   },
 
   productRow: {
     flexDirection: "row",
     alignItems: "center",
-    marginBottom: 12,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: "rgba(0,0,0,0.1)",
   },
-  productImage: { width: 60, height: 60, borderRadius: 10 },
-  productInfo: { marginLeft: 12 },
-  productName: { fontSize: 16, fontWeight: "600" },
-  productPrice: { fontSize: 14 },
+  productImage: { width: 70, height: 70, borderRadius: 12 },
+  productInfo: { marginLeft: 12, flex: 1 },
+  productName: { fontSize: 16, fontWeight: "600", flexWrap: "wrap", marginBottom: 2 },
+  productSkinGoal: { fontSize: 12, color: "#a98f7e", marginBottom: 4 },
+  productPrice: { fontSize: 15, fontWeight: "600", color: "#3f3f3f" },
 
   modalWrapper: {
     flex: 1,
@@ -387,8 +448,9 @@ const styles = StyleSheet.create({
   },
 
   modalHeader: { fontSize: 18, fontWeight: "700", marginBottom: 10 },
-  modalPrice: { fontSize: 18, fontWeight: "700", marginVertical: 6 },
-  modalDescription: { marginBottom: 10 },
+  modalSkinGoal: { fontSize: 14, color: "#a98f7e", marginTop: 10 },
+  modalPrice: { fontSize: 20, fontWeight: "700", marginVertical: 6, color: "#3f3f3f" },
+  modalCategory: { fontSize: 13, color: "#666", marginBottom: 15 },
 
   productImageLarge: { width: "100%", height: 200, borderRadius: 15 },
 

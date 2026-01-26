@@ -8,13 +8,14 @@ import {
   TouchableOpacity,
   TextInput,
   Modal,
+  ActivityIndicator,
 } from "react-native";
 import { BlurView } from "expo-blur";
 import { supabase } from "../lib/supabase";
 import loginbg from "../assets/bg/betterskin_bg2.jpg";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import BottomNav from "./BottomNav";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { router } from "expo-router";
 
 // Mock questions (should match your QuizScreen)
 const questions = [
@@ -99,11 +100,21 @@ export default function ProfileScreen() {
   const [user, setUser] = useState(null);
   const [answers, setAnswers] = useState([]);
   const [otherAnswers, setOtherAnswers] = useState([]);
+  const [loading, setLoading] = useState(true);
 
   const [editingIndex, setEditingIndex] = useState(null);
   const [showModal, setShowModal] = useState(false);
   const [selectedOptions, setSelectedOptions] = useState([]);
   const [otherInput, setOtherInput] = useState("");
+
+  /* ---------------- AUTH GUARD ---------------- */
+  useEffect(() => {
+    const checkAuth = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) router.replace("/");
+    };
+    checkAuth();
+  }, []);
 
   const questionLabels = [
     "My skin type",
@@ -117,25 +128,35 @@ export default function ProfileScreen() {
   ];
 
   useEffect(() => {
-    const fetchUser = async () => {
-      const { data } = await supabase.auth.getUser();
-      setUser(data?.user || null);
-    };
-
-    const fetchSurvey = async () => {
+    const fetchUserAndSurvey = async () => {
+      setLoading(true);
       try {
-        const storedAnswers = await AsyncStorage.getItem("surveyAnswers");
-        const storedOther = await AsyncStorage.getItem("surveyOtherAnswers");
+        const { data } = await supabase.auth.getUser();
+        setUser(data?.user || null);
 
-        if (storedAnswers) setAnswers(JSON.parse(storedAnswers));
-        if (storedOther) setOtherAnswers(JSON.parse(storedOther));
+        if (data?.user) {
+          // Load quiz answers from Supabase
+          const { data: profile, error } = await supabase
+            .from('profiles')
+            .select('quiz_answers, quiz_other_answers')
+            .eq('id', data.user.id)
+            .single();
+
+          if (error) {
+            console.error("Error loading profile:", error);
+          } else if (profile) {
+            if (profile.quiz_answers) setAnswers(profile.quiz_answers);
+            if (profile.quiz_other_answers) setOtherAnswers(profile.quiz_other_answers);
+          }
+        }
       } catch (e) {
         console.error("Failed to load survey data", e);
+      } finally {
+        setLoading(false);
       }
     };
 
-    fetchUser();
-    fetchSurvey();
+    fetchUserAndSurvey();
   }, []);
 
   // Render text for profile display
@@ -198,8 +219,20 @@ export default function ProfileScreen() {
     setAnswers(updatedAnswers);
     setOtherAnswers(updatedOther);
 
-    await AsyncStorage.setItem("surveyAnswers", JSON.stringify(updatedAnswers));
-    await AsyncStorage.setItem("surveyOtherAnswers", JSON.stringify(updatedOther));
+    // Save to Supabase
+    if (user?.id) {
+      const { error } = await supabase
+        .from('profiles')
+        .update({
+          quiz_answers: updatedAnswers,
+          quiz_other_answers: updatedOther
+        })
+        .eq('id', user.id);
+
+      if (error) {
+        console.error("Error saving quiz updates:", error);
+      }
+    }
 
     setShowModal(false);
   };
@@ -219,13 +252,37 @@ export default function ProfileScreen() {
           {/* User Info */}
           <View style={styles.userBox}>
             <Text style={styles.userText}>
-              {user?.user_metadata?.first_name || ""}{" "}
-              {user?.user_metadata?.last_name || ""}
+              {user?.user_metadata?.full_name || 
+               user?.user_metadata?.name || 
+               user?.email?.split("@")[0] || 
+               "User"}
             </Text>
+            <Text style={styles.userEmail}>{user?.email}</Text>
           </View>
 
+          {/* Loading State */}
+          {loading && (
+            <View style={styles.loadingBox}>
+              <ActivityIndicator size="small" color="#a98f7e" />
+              <Text style={styles.loadingText}>Loading your profile...</Text>
+            </View>
+          )}
+
+          {/* Empty State */}
+          {!loading && answers.length === 0 && (
+            <View style={styles.emptyBox}>
+              <Text style={styles.emptyText}>No quiz answers yet.</Text>
+              <TouchableOpacity
+                style={styles.takeQuizButton}
+                onPress={() => router.replace("/quiz")}
+              >
+                <Text style={styles.takeQuizText}>Take the Quiz</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+
           {/* Survey Answers */}
-          {answers.map((ans, idx) => (
+          {!loading && answers.map((ans, idx) => (
             <TouchableOpacity
               key={idx}
               style={styles.answerBox}
@@ -325,6 +382,42 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: "600",
     color: "#3f3f3f",
+  },
+  userEmail: {
+    fontSize: 14,
+    color: "#666",
+    marginTop: 4,
+  },
+  loadingBox: {
+    width: "100%",
+    padding: 30,
+    alignItems: "center",
+  },
+  loadingText: {
+    marginTop: 10,
+    fontSize: 14,
+    color: "#666",
+  },
+  emptyBox: {
+    width: "100%",
+    padding: 30,
+    alignItems: "center",
+  },
+  emptyText: {
+    fontSize: 16,
+    color: "#666",
+    marginBottom: 15,
+  },
+  takeQuizButton: {
+    backgroundColor: "#a98f7e",
+    paddingVertical: 12,
+    paddingHorizontal: 30,
+    borderRadius: 25,
+  },
+  takeQuizText: {
+    color: "#fff",
+    fontSize: 16,
+    fontWeight: "600",
   },
   answerBox: {
     width: "100%",

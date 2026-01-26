@@ -11,6 +11,8 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import BottomNav from "./BottomNav";
 import { buildRoutine } from "./lib/routineEngine"; // 👈 engine
+import { supabase } from "../lib/supabase";
+import { router } from "expo-router";
 
 export default function RoutineScreen() {
   const insets = useSafeAreaInsets();
@@ -19,6 +21,15 @@ export default function RoutineScreen() {
   const [products, setProducts] = useState([]);
   const [routine, setRoutine] = useState([]);
   const [selectedDate, setSelectedDate] = useState(new Date());
+
+  /* ---------------- AUTH GUARD ---------------- */
+  useEffect(() => {
+    const checkAuth = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) router.replace("/");
+    };
+    checkAuth();
+  }, []);
 
   // Track removed products per routine type
   const [removedProducts, setRemovedProducts] = useState({

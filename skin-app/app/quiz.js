@@ -8,9 +8,9 @@ import {
   ImageBackground,
   ScrollView,
   TextInput,
+  Alert,
 } from "react-native";
 import { BlurView } from "expo-blur";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import loginbg from "../assets/bg/betterskin_bg2.jpg";
 import { supabase } from "../lib/supabase";
 
@@ -90,10 +90,14 @@ export default function QuizScreen() {
 
   const question = questions[current];
 
-  // load current user
+  // load current user + auth guard
   useEffect(() => {
     const loadUser = async () => {
       const { data } = await supabase.auth.getUser();
+      if (!data?.user) {
+        router.replace("/");
+        return;
+      }
       setUserId(data.user.id);
     };
     loadUser();
@@ -111,6 +115,7 @@ export default function QuizScreen() {
 
   const handleNext = async () => {
     const updatedAnswers = [...answers, selected];
+    const updatedOtherAnswers = [...otherAnswers];
     setAnswers(updatedAnswers);
     setSelected([]);
 
@@ -119,11 +124,27 @@ export default function QuizScreen() {
     } else {
       if (!userId) return; // safety check
 
-      // Save answers per user
-      await AsyncStorage.setItem(`onboardingComplete:${userId}`, "true");
-      await AsyncStorage.setItem(`surveyAnswers:${userId}`, JSON.stringify(updatedAnswers));
-      await AsyncStorage.setItem(`surveyOtherAnswers:${userId}`, JSON.stringify(otherAnswers));
+      // Save quiz answers to Supabase (syncs across devices)
+      // Use upsert to create profile if it doesn't exist
+      const { error } = await supabase
+        .from('profiles')
+        .upsert(
+          { 
+            id: userId,
+            quiz_completed: true,
+            quiz_answers: updatedAnswers,
+            quiz_other_answers: updatedOtherAnswers
+          },
+          { onConflict: 'id' }
+        );
 
+      if (error) {
+        console.error("Error saving quiz data:", error);
+        Alert.alert("Save Failed", "Could not save your answers. Please try again.");
+        return;
+      }
+      
+      console.log("✅ Quiz completed and saved to database");
       router.replace("/profile");
     }
   };
