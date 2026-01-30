@@ -8,6 +8,7 @@ import {
   Image,
   Modal,
   ScrollView,
+  Alert,
 } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -47,6 +48,16 @@ export default function NewProduct() {
   const [showCamera, setShowCamera] = useState(false);
 
   const saveProduct = async () => {
+    // Validate serum type is selected when category is Serum
+    if (category === "Serum / Active Ingredients" && !serumType) {
+      Alert.alert(
+        "Missing Information",
+        "Please select what type of serum/active ingredient this product contains.",
+        [{ text: "OK" }]
+      );
+      return;
+    }
+
     const stored = await AsyncStorage.getItem("products");
     const products = stored ? JSON.parse(stored) : [];
 
@@ -134,19 +145,26 @@ export default function NewProduct() {
 
         {/* SERUM SELECT */}
         {category === "Serum / Active Ingredients" && (
-          <TouchableOpacity
-            style={styles.selectBox}
-            onPress={() => setShowSerumModal(true)}
-          >
-            <Text
+          <View style={styles.serumSelectContainer}>
+            <Text style={styles.serumSelectLabel}>Select Active Ingredient *</Text>
+            <TouchableOpacity
               style={[
-                styles.selectText,
-                !serumType && { color: "#999" },
+                styles.selectBox,
+                !serumType && styles.selectBoxRequired,
               ]}
+              onPress={() => setShowSerumModal(true)}
             >
-              {serumType || "Select active ingredient"}
-            </Text>
-          </TouchableOpacity>
+              <Text
+                style={[
+                  styles.selectText,
+                  !serumType && { color: "#999" },
+                ]}
+              >
+                {serumType || "Tap to select active ingredient"}
+              </Text>
+              <Text style={styles.selectArrow}>▼</Text>
+            </TouchableOpacity>
+          </View>
         )}
 
         {/* SAVE */}
@@ -255,19 +273,46 @@ const styles = StyleSheet.create({
     color: "#fff",
   },
 
+  serumSelectContainer: {
+    marginBottom: 20,
+  },
+
+  serumSelectLabel: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#877d73",
+    marginBottom: 8,
+    marginLeft: 4,
+  },
+
   selectBox: {
     backgroundColor: "#fff",
     borderRadius: 15,
-    paddingVertical: 14,
+    paddingVertical: 16,
     paddingHorizontal: 16,
-    borderWidth: 1,
-    borderColor: "#ddd",
-    marginBottom: 20,
+    borderWidth: 2,
+    borderColor: "#877d73",
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+
+  selectBoxRequired: {
+    backgroundColor: "#fef9f5",
+    borderColor: "#c9a87c",
+    borderStyle: "dashed",
   },
 
   selectText: {
     fontSize: 16,
     color: "#333",
+    flex: 1,
+  },
+
+  selectArrow: {
+    fontSize: 12,
+    color: "#877d73",
+    marginLeft: 10,
   },
 
   saveButton: {

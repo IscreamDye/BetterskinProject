@@ -6,6 +6,7 @@ import {
   FlatList,
   StyleSheet,
   Alert,
+  Modal,
 } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -21,6 +22,8 @@ export default function RoutineScreen() {
   const [products, setProducts] = useState([]);
   const [routine, setRoutine] = useState([]);
   const [selectedDate, setSelectedDate] = useState(new Date());
+  const [showCompletionModal, setShowCompletionModal] = useState(false);
+  const [completedDays, setCompletedDays] = useState({ morning: [], evening: [] });
 
   /* ---------------- AUTH GUARD ---------------- */
   useEffect(() => {
@@ -65,6 +68,9 @@ export default function RoutineScreen() {
 
       const checked = await AsyncStorage.getItem("checkedProducts");
       if (checked) setCheckedProducts(JSON.parse(checked));
+
+      const completed = await AsyncStorage.getItem("completedDays");
+      if (completed) setCompletedDays(JSON.parse(completed));
     };
     loadAll();
   }, []);
@@ -142,6 +148,24 @@ export default function RoutineScreen() {
 
     setCheckedProducts(updated);
     await AsyncStorage.setItem("checkedProducts", JSON.stringify(updated));
+
+    // Check if all products in routine are now checked
+    const routineIds = routine.map(p => p.id);
+    const allChecked = routineIds.length > 0 && routineIds.every(id => newChecked.includes(id));
+    const dayCompletedKey = `${todayKey}_${routineType}`;
+    
+    if (allChecked && !completedDays[routineType]?.includes(dayCompletedKey)) {
+      // Show completion modal
+      setShowCompletionModal(true);
+      
+      // Mark this day/routine as completed (so popup doesn't show again)
+      const updatedCompleted = {
+        ...completedDays,
+        [routineType]: [...(completedDays[routineType] || []), dayCompletedKey],
+      };
+      setCompletedDays(updatedCompleted);
+      await AsyncStorage.setItem("completedDays", JSON.stringify(updatedCompleted));
+    }
   };
 
   const removeProduct = async (product) => {
@@ -197,6 +221,7 @@ export default function RoutineScreen() {
           onPress: async () => {
             setRemovedProducts({ morning: [], evening: [] });
             setCheckedProducts({ morning: {}, evening: {} });
+            setCompletedDays({ morning: [], evening: [] });
 
             await AsyncStorage.setItem(
               "removedProducts",
@@ -205,6 +230,10 @@ export default function RoutineScreen() {
             await AsyncStorage.setItem(
               "checkedProducts",
               JSON.stringify({ morning: {}, evening: {} })
+            );
+            await AsyncStorage.setItem(
+              "completedDays",
+              JSON.stringify({ morning: [], evening: [] })
             );
           },
         },
@@ -219,16 +248,16 @@ export default function RoutineScreen() {
       onLongPress={() => removeProduct(item)} // long press triggers removal
     >
       <View style={styles.productInfo}>
-        <View style={styles.checkbox}>
-          {item.checked && <View style={styles.checkboxTick} />}
+        <View style={[styles.checkbox, item.checked && styles.checkboxChecked]}>
+          {item.checked && <Text style={styles.checkboxTick}>✓</Text>}
         </View>
 
-        <View style={{ flex: 1 }}>
-          <Text style={styles.productName}>{item.name}</Text>
-          <Text style={styles.productCategory}>
+        <View style={{ flex: 1, opacity: item.checked ? 0.5 : 1 }}>
+          <Text style={[styles.productName, item.checked && styles.checkedText]}>{item.name}</Text>
+          <Text style={[styles.productCategory, item.checked && styles.checkedText]}>
             {item.serumType || item.category}
           </Text>
-          {item.reason && <Text style={styles.reasonText}>{item.reason}</Text>}
+          {item.reason && <Text style={[styles.reasonText, item.checked && styles.checkedText]}>{item.reason}</Text>}
         </View>
       </View>
     </TouchableOpacity>
@@ -310,6 +339,29 @@ export default function RoutineScreen() {
           </View>
         }
       />
+
+      {/* COMPLETION MODAL */}
+      <Modal
+        visible={showCompletionModal}
+        transparent
+        animationType="fade"
+      >
+        <View style={styles.completionModalBackdrop}>
+          <View style={styles.completionModalContent}>
+            <Text style={styles.completionEmoji}>🎉</Text>
+            <Text style={styles.completionTitle}>Routine Complete!</Text>
+            <Text style={styles.completionText}>
+              Amazing! You've finished your {routineType} routine for today.
+            </Text>
+            <TouchableOpacity
+              style={styles.completionButton}
+              onPress={() => setShowCompletionModal(false)}
+            >
+              <Text style={styles.completionButtonText}>Continue</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
 
       <BottomNav />
     </View>
@@ -398,20 +450,29 @@ const styles = StyleSheet.create({
   },
 
   checkbox: {
-    width: 20,
-    height: 20,
-    borderRadius: 4,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
     borderWidth: 2,
-    borderColor: "#333",
+    borderColor: "#877d73",
     justifyContent: "center",
     alignItems: "center",
     marginRight: 12,
   },
 
+  checkboxChecked: {
+    backgroundColor: "#877d73",
+    borderColor: "#877d73",
+  },
+
   checkboxTick: {
-    width: 12,
-    height: 12,
-    backgroundColor: "#333",
+    color: "#fff",
+    fontSize: 14,
+    fontWeight: "bold",
+  },
+
+  checkedText: {
+    textDecorationLine: "line-through",
   },
 
   productName: {
@@ -440,5 +501,54 @@ const styles = StyleSheet.create({
     color: "#fff",
     fontWeight: "600",
     fontSize: 16,
+  },
+
+  /* COMPLETION MODAL */
+  completionModalBackdrop: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.5)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+
+  completionModalContent: {
+    backgroundColor: "#fff",
+    borderRadius: 20,
+    padding: 30,
+    marginHorizontal: 40,
+    alignItems: "center",
+  },
+
+  completionEmoji: {
+    fontSize: 50,
+    marginBottom: 15,
+  },
+
+  completionTitle: {
+    fontSize: 22,
+    fontWeight: "700",
+    color: "#333",
+    marginBottom: 10,
+  },
+
+  completionText: {
+    fontSize: 15,
+    color: "#666",
+    textAlign: "center",
+    marginBottom: 20,
+    lineHeight: 22,
+  },
+
+  completionButton: {
+    backgroundColor: "#877d73",
+    paddingVertical: 12,
+    paddingHorizontal: 40,
+    borderRadius: 25,
+  },
+
+  completionButtonText: {
+    color: "#fff",
+    fontSize: 16,
+    fontWeight: "600",
   },
 });

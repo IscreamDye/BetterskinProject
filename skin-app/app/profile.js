@@ -43,6 +43,7 @@ export default function DashboardScreen() {
 
   /* ---------------- QUIZ DATA ---------------- */
   const [skinConcerns, setSkinConcerns] = useState([]);
+  const [userBudget, setUserBudget] = useState(null); // User's budget preference from quiz
 
   /* ---------------- PRODUCT MODAL ---------------- */
   const [selectedProduct, setSelectedProduct] = useState(null);
@@ -60,6 +61,42 @@ export default function DashboardScreen() {
   /* ---------------- PRODUCTS ---------------- */
   const [products, setProducts] = useState([]);
   const [productsLoading, setProductsLoading] = useState(true);
+  const [showAllProducts, setShowAllProducts] = useState(false);
+
+  // Budget price ranges (in euros)
+  const getBudgetRange = (budget) => {
+    switch (budget) {
+      case "Budget friendly ($0-50)":
+        return { min: 0, max: 50 };
+      case "Medium range ($50-100)":
+        return { min: 50, max: 100 };
+      case "Premium ($100+)":
+        return { min: 100, max: Infinity };
+      default:
+        return null; // No budget filter
+    }
+  };
+
+  // Filter products by user's budget preference
+  const budgetFilteredProducts = userBudget
+    ? products.filter(p => {
+        const range = getBudgetRange(userBudget);
+        if (!range) return true;
+        const price = Number(p.price || 0);
+        return price >= range.min && price < range.max;
+      })
+    : products;
+
+  // Limit visible products to 3 unless expanded
+  const visibleProducts = showAllProducts ? budgetFilteredProducts : budgetFilteredProducts.slice(0, 3);
+
+  // Group products by skin goal for better organization (using budget filtered products)
+  const productsBySkinGoal = budgetFilteredProducts.reduce((acc, product) => {
+    const goal = product.skinGoal || 'Other';
+    if (!acc[goal]) acc[goal] = [];
+    acc[goal].push(product);
+    return acc;
+  }, {});
 
   /* ---------------- LOAD PRODUCTS BASED ON USER'S SKIN CONCERNS ---------------- */
   useEffect(() => {
@@ -151,6 +188,15 @@ export default function DashboardScreen() {
           const concerns = profile.quiz_answers[1] || [];
           console.log("Loaded skin concerns from Supabase:", concerns);
           setSkinConcerns(concerns);
+
+          // quiz_answers[7] contains budget preference (question index 7)
+          const budget = profile.quiz_answers[7];
+          if (budget && budget.length > 0) {
+            // Budget is single-select, so take the first item
+            const budgetValue = Array.isArray(budget) ? budget[0] : budget;
+            console.log("Loaded budget from Supabase:", budgetValue);
+            setUserBudget(budgetValue);
+          }
         }
       } catch (e) {
         console.error("Failed to load quiz data from Supabase", e);
@@ -269,6 +315,7 @@ const fetchUVData = async () => {
             {skinConcerns.length > 0 ? (
               <Text style={styles.concernsText}>
                 For your skin concerns: {skinConcerns.join(", ")}
+                {userBudget && ` • Budget: ${userBudget}`}
               </Text>
             ) : (
               <Text style={styles.concernsText}>
@@ -278,29 +325,66 @@ const fetchUVData = async () => {
 
             {productsLoading ? (
               <ActivityIndicator style={{ marginTop: 15 }} />
-            ) : products.length === 0 ? (
+            ) : budgetFilteredProducts.length === 0 ? (
               <View style={styles.noProductsBox}>
                 <Text style={styles.noProductsText}>
                   {skinConcerns.length > 0 
-                    ? "No products found for your skin concerns" 
+                    ? userBudget 
+                      ? "No products found for your skin concerns within your budget"
+                      : "No products found for your skin concerns" 
                     : "No products available"}
                 </Text>
               </View>
             ) : (
-              products.map((p, i) => (
-                <TouchableOpacity
-                  key={p.id || i}
-                  style={styles.productRow}
-                  onPress={() => setSelectedProduct(p)}
-                >
-                  <Image source={p.photo} style={styles.productImage} />
-                  <View style={styles.productInfo}>
-                    <Text style={styles.productName}>{p.name}</Text>
-                    <Text style={styles.productSkinGoal}>For: {p.skinGoal}</Text>
-                    <Text style={styles.productPrice}>€{Number(p.price || 0).toFixed(2)}</Text>
-                  </View>
-                </TouchableOpacity>
-              ))
+              <>
+                {Object.entries(productsBySkinGoal).map(([skinGoal, goalProducts]) => {
+                  // If not showing all, limit to first 3 products total
+                  const productsToShow = showAllProducts 
+                    ? goalProducts 
+                    : goalProducts.slice(0, Math.max(0, 3 - visibleProducts.indexOf(goalProducts[0])));
+                  
+                  if (!showAllProducts && visibleProducts.indexOf(goalProducts[0]) === -1) {
+                    // Check if any of this goal's products are in visibleProducts
+                    const hasVisibleProducts = goalProducts.some(p => visibleProducts.includes(p));
+                    if (!hasVisibleProducts) return null;
+                  }
+                  
+                  const displayProducts = showAllProducts 
+                    ? goalProducts 
+                    : goalProducts.filter(p => visibleProducts.includes(p));
+                  
+                  if (displayProducts.length === 0) return null;
+                  
+                  return (
+                    <View key={skinGoal} style={styles.skinGoalSection}>
+                      <Text style={styles.skinGoalHeader}>{skinGoal}</Text>
+                      {displayProducts.map((p, i) => (
+                        <TouchableOpacity
+                          key={p.id || i}
+                          style={styles.productRow}
+                          onPress={() => setSelectedProduct(p)}
+                        >
+                          <Image source={p.photo} style={styles.productImage} />
+                          <View style={styles.productInfo}>
+                            <Text style={styles.productName}>{p.name}</Text>
+                            <Text style={styles.productPrice}>€{Number(p.price || 0).toFixed(2)}</Text>
+                          </View>
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+                  );
+                })}
+                {budgetFilteredProducts.length > 3 && (
+                  <TouchableOpacity
+                    style={styles.seeMoreButton}
+                    onPress={() => setShowAllProducts(!showAllProducts)}
+                  >
+                    <Text style={styles.seeMoreText}>
+                      {showAllProducts ? "Show Less" : `See More Recommendations (${budgetFilteredProducts.length - 3})`}
+                    </Text>
+                  </TouchableOpacity>
+                )}
+              </>
             )}
           </View>
         </ScrollView>
@@ -420,6 +504,34 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: "#888",
     textAlign: "center",
+  },
+
+  seeMoreButton: {
+    backgroundColor: "#a98f7e",
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 12,
+    alignItems: "center",
+    marginTop: 15,
+  },
+  seeMoreText: {
+    color: "#fff",
+    fontWeight: "600",
+    fontSize: 14,
+  },
+
+  skinGoalSection: {
+    marginBottom: 10,
+  },
+  skinGoalHeader: {
+    fontSize: 15,
+    fontWeight: "700",
+    color: "#a98f7e",
+    marginTop: 10,
+    marginBottom: 5,
+    paddingBottom: 5,
+    borderBottomWidth: 1,
+    borderBottomColor: "#a98f7e",
   },
 
   productRow: {

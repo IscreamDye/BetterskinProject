@@ -140,7 +140,7 @@ export default function AuthGateway() {
           )}
 
           <Text style={styles.title}>BETTERSKIN</Text>
-          <Text style={styles.title}>v15</Text>
+          <Text style={styles.title}>v16</Text>
           <Text style={styles.subtitle}>
             Personalized skincare recommendations
           </Text>
